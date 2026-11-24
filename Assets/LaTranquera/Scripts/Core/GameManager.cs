@@ -101,6 +101,7 @@ namespace LaTranquera
         {
             SaveSystem.Delete();
             PriceBook.Clear();
+            Upgrades.Reset();
             Time.timeScale = 1f;
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }

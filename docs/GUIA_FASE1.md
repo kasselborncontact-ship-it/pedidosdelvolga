@@ -52,7 +52,7 @@ Si en la Console aparece un error que menciona `UnityEngine.InputSystem`:
 
 1. En la barra de menús de arriba apareció **La Tranquera**. Hacé clic en
    **La Tranquera → Construir escena Fase 1** y aceptá.
-2. Tarda un poco: arma la ruta, el almacén, la huerta, el pozo, el galpón, la casa, los alambrados,
+2. Tarda un poco: arma la ruta, la casa de campo con el almacén, el depósito, los terrenos, el aljibe, el tambo, los alambrados,
    los árboles, las sierras, el pasto, los sistemas y el jugador.
 3. Al terminar queda guardada en `Assets/LaTranquera/Scenes/Fase1.unity` y agregada a la lista de escenas del juego.
 
@@ -63,57 +63,55 @@ Si en la Console aparece un error que menciona `UnityEngine.InputSystem`:
 Apretá el botón **▶ Play** arriba en el centro. Hacé clic en la ventana Game para que tome el mouse.
 **Esc** abre la pausa y libera el mouse.
 
+Arrancás en el estacionamiento, frente a la **casa de campo**. Adelante, bajo la galería, está el **almacén**.
+A la derecha de la casa está el **depósito** (con portón al camino de tierra) y a la izquierda, cruzando el
+caminito, los **terrenos para sembrar**. Atrás de la casa está el patio con el **aljibe**.
+
 Este recorrido es exactamente la condición de "Fase 1 terminada":
 
-1. **Herramientas.** Caminá al **galpón** (el de chapa, a la derecha del almacén). Mirá la **azada** (parada en
-   el rincón del fondo) y apretá **E**: la tenés en la mano.
-2. **Carpir.** Andá a la **huerta** (a la izquierda, entrando por el lado este del alambrado). Mirá un cantero y hacé
-   **clic izquierdo 4 veces** hasta que diga 100 %. La tierra cambia a surcos.
-3. Volvé al galpón, mirá el gancho de la azada y apretá **E** para dejarla en su lugar (o soltala con **G** donde quieras).
-4. **Sembrar.** En la mesa del galpón hay 3 sobres de semillas. Agarrá el de **tomate** (E), mirá el cantero carpido y
-   **clic** en cada lugar donde quieras una planta (son 6 lugares por cantero). Aparece un brote.
-5. **Regar.** Dejá el sobre (G) y agarrá la **regadera** (repisa del galpón). Andá al **pozo** (afuera de la huerta,
-   del lado este) y hacé **clic** mirando el pozo: baja el balde y la regadera se llena (10 L).
-   Mirá el cantero y **clic** dos veces (cada pasada usa 2,5 L y sube la humedad 50 %).
+1. **Herramientas.** Entrá al almacén, pasá por la puerta del fondo al **comedor** y de ahí a la derecha al **depósito**.
+   En la pared del fondo están la **azada**, la **regadera** y el **balde**. Mirá la azada y apretá **E**.
+2. **Carpir donde quieras.** Andá a los **terrenos** (salís por la galería hacia la izquierda y entrás por la
+   abertura del alambrado). El **Lote 1** es tuyo. Mirá cualquier lugar de la tierra y hacé **clic izquierdo 2 veces**:
+   queda un surco carpido. Hacé todos los que quieras (tienen que estar un poco separados).
+3. Volvé y dejá la azada en su gancho (**E**) o soltala con **G** donde quieras.
+4. **Sembrar.** En la mesa del depósito hay 3 sobres de semillas. Agarrá el de **tomate** (E), mirá un surco y **clic**.
+   Los cultivos grandes (zapallo, sandía) piden más lugar libre alrededor: el juego te avisa.
+5. **Regar.** Agarrá la **regadera**, andá al **aljibe** (patio de atrás) y **clic** mirándolo: baja el balde y se llena.
+   Mirá tus plantas y **clic**: riega todas las que estén cerca del punto que mirás (1 L cada una).
 6. **Esperar.** El tomate necesita **96 horas regadas** (4 días de juego). La humedad dura ~24 h: **regá todos los días**.
    Si se seca más de 12 h se marchita; más de 48 h, se muere.
-   - Para pasar la noche: entrá a la **casa** (atrás del almacén) y apretá **E** en la cama (desde las 19:00).
-     Se guarda la partida.
+   - Para pasar la noche: andá al **dormitorio** (a la izquierda del almacén, se entra por la cocina) y **E** en la cama
+     (desde las 19:00). Se guarda la partida.
    - 🔧 Para probar rápido en el editor: **F8** adelanta 6 horas.
-7. **Cosechar.** Cuando la planta tiene tomates rojos dice "lista para cosechar". Agarrá un **cajón de madera**
-   (hay 3 en la entrada de la huerta), mirá la planta y **clic**: los 4 tomates van al cajón y se ven adentro.
-   Un cajón lleva hasta 24 tomates (u 8 lechugas). Cada cajón lleva un solo producto.
-8. **Al almacén.** Caminá con el cajón hasta el almacén. Mirá un lugar vacío de una **estantería** y **clic**:
-   pasa un tomate por clic. Cada lugar muestra una etiqueta con nombre y precio.
-9. **Precio.** Opción A: la **etiquetadora** (en la repisa al lado de la computadora): con ella en la mano mirá el
-   tomate y usá la **rueda del mouse** (+/- $100). Opción B: la **computadora** (E) → pestaña **Precios**.
-   El sugerido del tomate es **$600**. Si lo ponés más de 35 % arriba, nadie lo compra y se quejan.
-10. **Abrir.** El cartel cuelga en la vidriera que está a la izquierda de la puerta (mirando el almacén desde afuera).
-    Entrá, miralo desde adentro y apretá **E**: pasa a **ABIERTO** (se lee desde la ruta).
+7. **Cosechar.** Cuando tiene tomates rojos dice "lista para cosechar". Agarrá un **cajón** (hay 3 en la entrada
+   del Lote 1), mirá la planta y **clic**: los 4 tomates van al cajón.
+8. **Al almacén.** Llevá el cajón al almacén, mirá un lugar de una **estantería** y **clic** (un tomate por clic).
+9. **Precio.** Con la **etiquetadora** (repisa al lado de la computadora) usá la **rueda del mouse**, o en la
+   **computadora** (E) → **Precios**. El sugerido del tomate es **$600**.
+10. **Abrir.** El cartel cuelga en la vidriera a la izquierda de la puerta (mirando desde afuera). Miralo desde adentro
+    y apretá **E**: pasa a **ABIERTO**.
 11. **Cobrar.** Pasate atrás del mostrador (por el lado de la heladera). Cuando un cliente apoya sus cosas:
     1. Mirá cada producto y **E**: pasa por el lector (bip) y se suma en la pantalla.
-    2. El cliente dice cómo paga.
-    3. **Efectivo:** sus billetes quedan sobre el mostrador. **E en el frente del cajón** para abrirlo, después
-       **E en los billetes del cliente** para guardarlos. La pantalla muestra el **VUELTO**.
-       Mirá cada compartimento del cajón ($100, $200, $500, $1.000...) y **E** para pasar un billete a la
-       **bandeja del vuelto**. Si te equivocaste, **E en la bandeja** devuelve el último.
-       Cuando la bandeja tenga justo el vuelto, **E en el botón rojo ENTREGAR VUELTO**.
-       Si está mal, el cliente reclama y espera que lo corrijas.
-    4. **Tarjeta:** mirá las teclas del **posnet** y apretá **E** en cada número para tipear el total, después **OK**.
-       Si el monto no es el correcto, sale RECHAZADA y el cliente te avisa.
+    2. **Efectivo:** **E en el frente del cajón** para abrirlo, **E en los billetes del cliente** para guardarlos,
+       y armá el **VUELTO** sacando billetes de cada compartimento (E). **E en la bandeja** devuelve el último.
+       Cuando esté justo, **E en el botón rojo ENTREGAR VUELTO**.
+    3. **Tarjeta:** tipeá el total en el **posnet** (E en cada tecla) y **OK**.
 
 ✅ Si llegaste hasta acá, la Fase 1 funciona.
 
 ### Otras cosas para probar
 - **Pedidos al proveedor:** computadora → **Proveedor**. Tocá **+** en los productos (cada uno tiene su foto),
-  mirá el carrito y el total, **Confirmar pedido**. ~1 h 30 min de juego después llega una F-100 celeste y deja las
-  cajas en la puerta del galpón. Llevalas adentro, **F** para abrir cada caja y reponé como con los cajones.
+  mirá el carrito y el total, **Confirmar pedido**. ~1 h 30 min de juego después entra una F-100 celeste por la
+  tranquera y el camino de tierra, y deja las cajas en la puerta del depósito. Llevalas adentro, **F** para abrir cada caja y reponé como con los cajones.
   Las cajas vacías van al **tacho de basura** (al lado de la puerta del almacén, E con la caja en la mano).
 - **Lácteos** (leche, queso, manteca) solo entran en la **heladera**.
-- **Mejoras:** computadora → **Mejoras** → comprar canteros extra ($20.000 c/u).
+- **Mejoras:** computadora → **Mejoras** → comprar más terrenos (Lote 2 y 3) y semillas nuevas (papa, cebolla, maíz, zapallo, sandía, frutilla).
+- **La casa:** en la cocina podés cebarte unos mates, prender la radio o atizar la cocina a leña; el velador del dormitorio se prende y se apaga; las puertas se abren y cierran con E.
+- **El lechero:** todas las mañanas a las 7 pasa en su Rastrojero hasta el galpón del tambo (en la Fase 4 te va a comprar la leche).
 - **Caja y banco:** ver ventas del día y depositar la caja (al dormir se deposita sola, dejando cambio chico).
 - Arrancás con **$40.000 en el banco** y **$19.000 de cambio** en la caja, más una caja de yerba, una de fideos y una
-  de leche en el galpón para tener algo que vender el primer día. La luz cuesta $1.800/día + $900 por heladera.
+  de leche en el depósito para tener algo que vender el primer día. La luz cuesta $1.800/día + $900 por heladera.
 
 ---
 
@@ -142,8 +140,10 @@ No hace falta hacerlo a mano, pero así podés entender y cambiar la escena (ven
 | `Interactivo/Almacen/CartelAbiertoCerrado` | **OpenSign** |
 | `Interactivo/Almacen/TachoBasura` | **TrashBin** |
 | `Interactivo/.../LugarAzada`, `LugarRegadera`, `LugarBalde`, `LugarEtiquetadora` | **ToolHook** |
-| `Interactivo/Huerta/Cantero_1..12` | **GardenBed** (adentro, 6 `Lugar_n` con **Plant**). Del 7 al 12 empiezan bloqueados. |
-| `Interactivo/Pozo` | **WaterSource** |
+| `Interactivo/Terrenos/Lote 1..3` | **LandPlot** (el Lote 1 es tuyo; los surcos que carpís se crean solos como **SoilPatch**) |
+| `Interactivo/Aljibe` | **WaterSource** |
+| `Interactivo/Casa/...` | **Door** (puertas), **Decor** (mate, radio, cocina a leña, velador), **SleepBed** (cama) |
+| `_Sistemas` | también **MilkmanVisit** (el lechero) |
 | `Interactivo/Cama` | **SleepBed** |
 | `Interactivo/Tranquera` | **FarmGate** |
 | `Pasto` | **GrassField** |
@@ -162,7 +162,8 @@ los crea `NewGameSetup` al empezar una partida nueva, o `SaveSystem` al cargar u
 | Plata inicial y cambio en la caja | `_Sistemas` → NewGameSetup |
 | Cantidad y frecuencia de clientes | `_Sistemas` → CustomerSpawner |
 | Factura de luz | `_Sistemas` → Economy |
-| Precio de los canteros extra | cada `Cantero_n` → GardenBed → Unlock Price |
+| Precio de terrenos y semillas nuevas | `Scripts/Economy/Upgrades.cs` |
+| Lugar que necesita cada cultivo | `Scripts/Items/ProductDB.cs` → `spacing` |
 | Textos / traducción al inglés | `Scripts/Core/Loc.cs` |
 
 > Tras cambiar valores, si querés empezar de cero: **La Tranquera → Borrar partida guardada**.

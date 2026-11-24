@@ -11,7 +11,7 @@ Hecho en **Unity 6 + URP + C#**, salida para **Windows** y preparado para Steam 
 
 | Fase | Qué agrega | Estado |
 |---|---|---|
-| **1. Huerta + almacén** | Jugador, manos (una cosa por vez), cajones, huerta con 6 canteros y 3 cultivos (lechuga, tomate, zanahoria), pozo con balde, galpón con herramientas, almacén de 6 × 8 m con 2 estanterías y 1 heladera, precios (computadora y etiquetadora), cartel ABIERTO/CERRADO, clientes con fila y paciencia, caja con lector, cajón de billetes, vuelto y posnet, pedidos al proveedor con catálogo con fotos y camioneta, día/noche, dormir, gastos de luz, guardado, canteros extra que se compran | ✅ **Hecha (este repo)** |
+| **1. Huerta + almacén** | Jugador, manos (una cosa por vez), cajones, casa de campo antigua (almacén, comedor, cocina, dormitorio, baño y depósito), siembra libre en tu terreno con 9 cultivos (3 de entrada, el resto se compra), aljibe, terrenos que se compran, camino de tierra con tranquera, galpón del tambo y lechero en Rastrojero, almacén de 6 × 8 m con 2 estanterías y 1 heladera, precios (computadora y etiquetadora), cartel ABIERTO/CERRADO, clientes con fila y paciencia, caja con lector, cajón de billetes, vuelto y posnet, pedidos al proveedor con catálogo con fotos y camioneta, día/noche, dormir, gastos de luz, guardado | ✅ **Hecha (este repo)** |
 | 2. Animales | Corrales y gallinero (se compran), ternera/ternero/lechón/pollitos, comedero con bolsas de alimento, bebedero con balde, crecimiento diario visible, nidos y canasta de huevos, maples | Siguiente |
 | 3. Carnicería | Faena, res colgada en la cámara, mesa de corte con cuchillo o sierra, fetas, envasadora al vacío con etiqueta, heladera | |
 | 4. Tambo y lácteos | Ordeñe a mano u ordeñadora, tanque, mesa de envasado (botellas de vidrio, tachos de 10 L), envases retornables, el lechero en Rastrojero | |
@@ -35,14 +35,14 @@ Todo vive en `Assets/LaTranquera/`:
 
 ```
 Scripts/
-  Core/         GameInput (teclas), GameManager (pausa, dormir), NewGameSetup (partida nueva),
+  Core/         MeshKit (mallas: chapa, siluetas, copas), TexKit (texturas: ladrillo, calcáreo...), GameInput (teclas), GameManager (pausa, dormir), NewGameSetup (partida nueva),
                 Mats (materiales), Shapes (formas), Sfx (sonidos), Loc (traducciones)
   Player/       PlayerController (caminar, mirar), PlayerHands (lo que llevás)
   Interaction/  IInteractable, Interactor (el "punto" del centro: qué mirás y qué tecla usar)
   Items/        Carryable (base de lo que se agarra), Container/Crate/SupplierBox (cajones y cajas),
                 ProductItem, ProductDB (TODOS los productos y cultivos), herramientas (Hoe, WateringCan,
                 Bucket, SeedPacket, PriceLabeler), WorldFactory, ProductVisuals
-  Farming/      GardenBed (cantero), Plant (planta con 4 etapas), PlantVisuals, WaterSource (pozo)
+  Farming/      LandPlot (terreno), SoilPatch (surco con su planta, 4 etapas), PlantVisuals, WaterSource (aljibe)
   Store/        StoreManager, Shelf (estantería/heladera), OpenSign, ToolHook, TrashBin, FarmGate
   Customers/    Customer, CustomerSpawner, CustomerVisuals, SpeechBubble, StoreNav
   Checkout/     CheckoutCounter (la venta), CounterItem, RegisterScreen, CashDrawer + BillSlot,
@@ -52,8 +52,9 @@ Scripts/
   Time/         TimeManager (reloj), DayNightCycle (sol y luces), SleepBed (cama)
   Save/         SaveData, SaveSystem (JSON)
   UI/           HUD, UIKit, IconRenderer (fotos del catálogo)
-  World/        GrassField (pasto con volumen), HillsBackdrop (sierras de fondo)
-  Vehicles/     VehicleVisuals (F-100, Rastrojero, Falcon), TrafficSpawner, PassingCar
+  World/        GrassField (pasto con viento), HillsBackdrop (sierras), NatureKit (árboles), Door, Decor
+Shaders/        Pasto.shader (pasto que se mueve con el viento)
+  Vehicles/     VehicleVisuals (F-100, Rastrojero, Falcon con su silueta), TrafficSpawner, RouteDriver, MilkmanVisit
 Editor/
   SceneBuilder  menú "La Tranquera > Construir escena Fase 1" (arma todo el mapa solo)
   WorldParts    paredes, alambrados, árboles, postes de luz, carteles

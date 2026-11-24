@@ -33,19 +33,10 @@ namespace LaTranquera
 
             foreach (var kv in PriceBook.All) d.prices.Add(new PriceSave { id = kv.Key, price = kv.Value });
 
-            foreach (var b in GardenBed.All)
-            {
-                var bs = new BedSave { id = b.bedId, locked = b.locked, tilled = b.tilled, till = b.tillProgress, water = b.water };
-                foreach (var pl in b.plants)
-                    bs.plants.Add(new PlantSave { crop = pl.cropId, growth = pl.growth, dry = pl.dryHours, wilted = pl.wilted, dead = pl.dead });
-                d.beds.Add(bs);
-            }
-            // Los canteros bloqueados están desactivados a medias; buscamos todos igual
-            foreach (var b in Object.FindObjectsByType<GardenBed>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-            {
-                if (d.beds.Exists(x => x.id == b.bedId)) continue;
-                d.beds.Add(new BedSave { id = b.bedId, locked = b.locked });
-            }
+            foreach (var sp in SoilPatch.All)
+                d.patches.Add(new PatchSave { pos = sp.transform.position, till = sp.till, water = sp.water, crop = sp.cropId,
+                    growth = sp.growth, dry = sp.dryHours, wilted = sp.wilted, dead = sp.dead });
+            d.upgrades.AddRange(Upgrades.Owned);
 
             foreach (var s in Shelf.All)
             {
@@ -92,20 +83,15 @@ namespace LaTranquera
             PriceBook.Clear();
             foreach (var pr in d.prices) PriceBook.Set(pr.id, pr.price);
 
-            foreach (var b in Object.FindObjectsByType<GardenBed>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            Upgrades.Reset();
+            foreach (var u in d.upgrades) Upgrades.Give(u);
+            for (int i = SoilPatch.All.Count - 1; i >= 0; i--) Object.Destroy(SoilPatch.All[i].gameObject);
+            foreach (var ps in d.patches)
             {
-                var bs = d.beds.Find(x => x.id == b.bedId);
-                if (bs == null) continue;
-                b.locked = bs.locked; b.tilled = bs.tilled; b.tillProgress = bs.till; b.water = bs.water;
-                for (int i = 0; i < b.plants.Length && i < bs.plants.Count; i++)
-                {
-                    var ps = bs.plants[i];
-                    var pl = b.plants[i];
-                    pl.cropId = string.IsNullOrEmpty(ps.crop) ? null : ps.crop;
-                    pl.growth = ps.growth; pl.dryHours = ps.dry; pl.wilted = ps.wilted; pl.dead = ps.dead;
-                    pl.Refresh();
-                }
-                b.RefreshVisual();
+                var sp = SoilPatch.Create(ps.pos);
+                sp.till = ps.till; sp.water = ps.water;
+                sp.cropId = string.IsNullOrEmpty(ps.crop) ? null : ps.crop;
+                sp.growth = ps.growth; sp.dryHours = ps.dry; sp.wilted = ps.wilted; sp.dead = ps.dead;
             }
 
             foreach (var s in Shelf.All)

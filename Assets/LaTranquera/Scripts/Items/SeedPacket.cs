@@ -27,23 +27,24 @@ namespace LaTranquera
 
         public override string GetUsePrompt(UseContext c)
         {
-            var plant = c.Get<Plant>();
-            var bed = c.Get<GardenBed>();
-            if (bed == null || bed.locked) return null;
-            if (!bed.tilled) return "Primero carpí el cantero con la azada";
-            if (plant != null && plant.Empty) return "[Clic] Sembrar " + CropDB.Get(cropId).name.ToLower() + " acá";
-            if (plant == null && bed.FirstEmpty() != null) return "[Clic] Sembrar " + CropDB.Get(cropId).name.ToLower();
-            return null;
+            var patch = c.Get<SoilPatch>();
+            var crop = CropDB.Get(cropId);
+            if (patch == null)
+                return c.hasHit && LandPlot.CanFarm(c.hit.point) ? "Primero carpí con la azada donde quieras plantar" : null;
+            if (!patch.Empty) return null;
+            if (!patch.Tilled) return "Terminá de carpir con la azada";
+            var near = patch.CrowdingNeighbor(crop);
+            if (near != null) return Loc.T(crop.name) + " " + Loc.T("necesita más lugar") + " (" + crop.spacing.ToString("0.0") + " m)";
+            return "[Clic] Sembrar " + crop.name.ToLower() + " acá";
         }
 
         public override void Use(UseContext c)
         {
-            var bed = c.Get<GardenBed>();
-            if (bed == null || bed.locked || !bed.tilled) return;
-            var plant = c.Get<Plant>();
-            if (plant == null || !plant.Empty) plant = bed.NearestEmpty(c.hit.point);
-            if (plant == null) { HUD.Toast("No queda lugar en este cantero"); return; }
-            plant.Sow(cropId);
+            var patch = c.Get<SoilPatch>();
+            if (patch == null || !patch.Empty || !patch.Tilled) return;
+            var crop = CropDB.Get(cropId);
+            if (patch.CrowdingNeighbor(crop) != null) { HUD.Toast(crop.name + " necesita " + crop.spacing.ToString("0.0") + " m libres alrededor"); Sfx.Play("error"); return; }
+            patch.Sow(cropId);
             seeds--;
             Sfx.Play("dig", 0.3f);
             if (seeds <= 0)

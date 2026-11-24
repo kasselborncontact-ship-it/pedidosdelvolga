@@ -5,7 +5,7 @@ namespace LaTranquera
 {
     public enum Storage { Estanteria, Heladera }
 
-    public enum ProductShape { Lechuga, Tomate, Zanahoria, Yerba, Fideos, Harina, Aceite, Leche, Queso, Manteca }
+    public enum ProductShape { Lechuga, Tomate, Zanahoria, Yerba, Fideos, Harina, Aceite, Leche, Queso, Manteca, Cebolla, Papa, Choclo, Zapallo, Sandia, Frutilla }
 
     /// <summary>Un producto que se vende en el almacén.</summary>
     public class ProductDef
@@ -39,6 +39,19 @@ namespace LaTranquera
             new ProductDef { id = "zanahoria", name = "Atado de zanahorias", shape = ProductShape.Zanahoria, storage = Storage.Estanteria,
                 refPrice = 900, slotCap = 8, crateCap = 12, size = new Vector3(0.26f, 0.07f, 0.11f) },
 
+            new ProductDef { id = "cebolla", name = "Cebolla", shape = ProductShape.Cebolla, storage = Storage.Estanteria,
+                refPrice = 350, slotCap = 16, crateCap = 30, size = new Vector3(0.08f, 0.09f, 0.08f) },
+            new ProductDef { id = "papa", name = "Papa", shape = ProductShape.Papa, storage = Storage.Estanteria,
+                refPrice = 300, slotCap = 16, crateCap = 30, size = new Vector3(0.1f, 0.06f, 0.07f) },
+            new ProductDef { id = "choclo", name = "Choclo", shape = ProductShape.Choclo, storage = Storage.Estanteria,
+                refPrice = 700, slotCap = 8, crateCap = 12, size = new Vector3(0.26f, 0.07f, 0.075f) },
+            new ProductDef { id = "zapallo", name = "Zapallo anco", shape = ProductShape.Zapallo, storage = Storage.Estanteria,
+                refPrice = 2200, slotCap = 4, crateCap = 4, size = new Vector3(0.3f, 0.14f, 0.15f) },
+            new ProductDef { id = "sandia", name = "Sandía", shape = ProductShape.Sandia, storage = Storage.Estanteria,
+                refPrice = 5000, slotCap = 2, crateCap = 2, size = new Vector3(0.36f, 0.24f, 0.24f) },
+            new ProductDef { id = "frutilla", name = "Frutillas (bandeja)", shape = ProductShape.Frutilla, storage = Storage.Heladera,
+                refPrice = 3000, slotCap = 6, crateCap = 8, size = new Vector3(0.17f, 0.065f, 0.12f) },
+
             // --- Del proveedor (almacén) ---
             new ProductDef { id = "yerba", name = "Yerba 1 kg", shape = ProductShape.Yerba, storage = Storage.Estanteria,
                 refPrice = 4300, cost = 3200, pack = 6, slotCap = 8, crateCap = 6, size = new Vector3(0.13f, 0.21f, 0.08f) },
@@ -57,7 +70,7 @@ namespace LaTranquera
         };
 
         /// <summary>Cosas que los clientes a veces piden y todavía no vendemos (fases siguientes).</summary>
-        public static readonly string[] NotYetSold = { "huevos", "pan casero", "carne", "chorizos", "dulce de leche", "sandía" };
+        public static readonly string[] NotYetSold = { "huevos", "pan casero", "carne", "chorizos", "dulce de leche", "queso de campo" };
 
         static Dictionary<string, ProductDef> map;
         public static ProductDef Get(string id)
@@ -83,16 +96,24 @@ namespace LaTranquera
         public float growHours;    // horas de juego regadas hasta estar lista
         public int seedsPerPacket;
         public int packetCost;
+        public float spacing = 0.55f;  // distancia mínima a otra planta (metros)
+        public string unlock;          // mejora que hay que comprar para tener la semilla (null = desde el principio)
     }
 
     public static class CropDB
     {
         public static readonly List<CropDef> All = new List<CropDef>
         {
-            new CropDef { id = "lechuga",   name = "Lechuga",   productId = "lechuga",   yield = 1, growHours = 48, seedsPerPacket = 12, packetCost = 2000 },
-            new CropDef { id = "tomate",    name = "Tomate",    productId = "tomate",    yield = 4, growHours = 96, seedsPerPacket = 6,  packetCost = 2500 },
-            new CropDef { id = "zanahoria", name = "Zanahoria", productId = "zanahoria", yield = 1, growHours = 72, seedsPerPacket = 12, packetCost = 1800 },
-            // Fase siguiente: cebolla, papa, maíz, zapallo, sandía, frutilla, uva
+            new CropDef { id = "lechuga",   name = "Lechuga",   productId = "lechuga",   yield = 1, growHours = 48,  seedsPerPacket = 12, packetCost = 2000, spacing = 0.55f },
+            new CropDef { id = "tomate",    name = "Tomate",    productId = "tomate",    yield = 4, growHours = 96,  seedsPerPacket = 6,  packetCost = 2500, spacing = 0.7f },
+            new CropDef { id = "zanahoria", name = "Zanahoria", productId = "zanahoria", yield = 1, growHours = 72,  seedsPerPacket = 12, packetCost = 1800, spacing = 0.55f },
+            new CropDef { id = "cebolla",   name = "Cebolla",   productId = "cebolla",   yield = 3, growHours = 72,  seedsPerPacket = 20, packetCost = 1500, spacing = 0.55f, unlock = "sem_papa_cebolla" },
+            new CropDef { id = "papa",      name = "Papa",      productId = "papa",      yield = 5, growHours = 96,  seedsPerPacket = 10, packetCost = 3000, spacing = 0.6f,  unlock = "sem_papa_cebolla" },
+            new CropDef { id = "maiz",      name = "Maíz",      productId = "choclo",    yield = 2, growHours = 120, seedsPerPacket = 12, packetCost = 2000, spacing = 0.6f,  unlock = "sem_maiz_zapallo" },
+            new CropDef { id = "zapallo",   name = "Zapallo",   productId = "zapallo",   yield = 2, growHours = 144, seedsPerPacket = 6,  packetCost = 2500, spacing = 1.1f,  unlock = "sem_maiz_zapallo" },
+            new CropDef { id = "sandia",    name = "Sandía",    productId = "sandia",    yield = 1, growHours = 144, seedsPerPacket = 6,  packetCost = 3000, spacing = 1.3f,  unlock = "sem_sandia_frutilla" },
+            new CropDef { id = "frutilla",  name = "Frutilla",  productId = "frutilla",  yield = 2, growHours = 96,  seedsPerPacket = 8,  packetCost = 4000, spacing = 0.55f, unlock = "sem_sandia_frutilla" },
+            // Más adelante: uva (parral), girasol...
         };
 
         public static CropDef Get(string id) => All.Find(c => c.id == id);

@@ -10,8 +10,11 @@ namespace LaTranquera
     {
         public Transform leaf;
         public float openAngle = 95f;
+        public bool startOpen;
         bool open;
         float current;
+
+        void Start() { open = startOpen; current = open ? openAngle : 0; }
 
         public string GetName(UseContext c) => Loc.T("Tranquera");
         public string GetPrompt(UseContext c) => open ? "[E] Cerrar la tranquera" : "[E] Abrir la tranquera";

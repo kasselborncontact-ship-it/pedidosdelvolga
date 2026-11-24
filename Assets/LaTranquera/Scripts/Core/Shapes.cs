@@ -147,36 +147,32 @@ namespace LaTranquera
     /// <summary>Mallas hechas por código.</summary>
     public static class Meshes
     {
-        static Mesh cone;
-        /// <summary>Cono de 1 de diámetro y 1 de alto, base en y=0.</summary>
-        public static Mesh Cone
+        /// <summary>Cono de 1 de diámetro y 1 de alto, base en y=0 (se guarda como archivo en el editor).</summary>
+        public static Mesh Cone => MeshKit.Persist("cono", BuildCone);
+
+        static Mesh BuildCone()
         {
-            get
+            const int seg = 8;
+            var v = new List<Vector3>();
+            var t = new List<int>();
+            for (int i = 0; i < seg; i++)
             {
-                if (cone != null) return cone;
-                const int seg = 8;
-                var v = new List<Vector3>();
-                var t = new List<int>();
-                for (int i = 0; i < seg; i++)
-                {
-                    float a0 = i * Mathf.PI * 2 / seg, a1 = (i + 1) * Mathf.PI * 2 / seg;
-                    var p0 = new Vector3(Mathf.Cos(a0) * 0.5f, 0, Mathf.Sin(a0) * 0.5f);
-                    var p1 = new Vector3(Mathf.Cos(a1) * 0.5f, 0, Mathf.Sin(a1) * 0.5f);
-                    int b = v.Count;
-                    v.Add(p0); v.Add(Vector3.up); v.Add(p1);
-                    t.Add(b); t.Add(b + 1); t.Add(b + 2);
-                    b = v.Count;
-                    v.Add(p0); v.Add(p1); v.Add(Vector3.zero);
-                    t.Add(b); t.Add(b + 1); t.Add(b + 2);
-                }
-                cone = new Mesh { name = "Cono" };
-                cone.SetVertices(v);
-                cone.SetTriangles(t, 0);
-                cone.RecalculateNormals();
-                cone.RecalculateBounds();
-                cone.hideFlags = HideFlags.DontSave;
-                return cone;
+                float a0 = i * Mathf.PI * 2 / seg, a1 = (i + 1) * Mathf.PI * 2 / seg;
+                var p0 = new Vector3(Mathf.Cos(a0) * 0.5f, 0, Mathf.Sin(a0) * 0.5f);
+                var p1 = new Vector3(Mathf.Cos(a1) * 0.5f, 0, Mathf.Sin(a1) * 0.5f);
+                int b = v.Count;
+                v.Add(p0); v.Add(Vector3.up); v.Add(p1);
+                t.Add(b); t.Add(b + 1); t.Add(b + 2);
+                b = v.Count;
+                v.Add(p0); v.Add(p1); v.Add(Vector3.zero);
+                t.Add(b); t.Add(b + 1); t.Add(b + 2);
             }
+            var m = new Mesh { name = "Cono" };
+            m.SetVertices(v);
+            m.SetTriangles(t, 0);
+            m.RecalculateNormals();
+            m.RecalculateBounds();
+            return m;
         }
     }
 

@@ -21,6 +21,8 @@ namespace LaTranquera
 
         public void Spawn()
         {
+            Upgrades.Reset();
+            foreach (var lp in LandPlot.All) lp.SetOwned(lp.plotId == "lote_1");
             Economy.I.bank = startBank;
             if (CashDrawer.I != null) CashDrawer.I.SetCounts(startDrawer);
             TimeManager.I.totalMinutes = 7 * 60; // día 1, 07:00

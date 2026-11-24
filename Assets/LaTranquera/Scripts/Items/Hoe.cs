@@ -23,23 +23,44 @@ namespace LaTranquera
 
         public override string GetUsePrompt(UseContext c)
         {
-            var bed = c.Get<GardenBed>();
-            if (bed == null || bed.locked) return null;
-            var plant = c.Get<Plant>();
-            if (plant != null && plant.dead) return "[Clic] Sacar planta seca";
-            if (!bed.tilled) return "[Clic] Carpir el cantero (" + Mathf.RoundToInt(bed.tillProgress * 100) + "%)";
-            return null;
+            var patch = c.Get<SoilPatch>();
+            if (patch != null)
+            {
+                if (!patch.Empty && patch.dead) return "[Clic] Sacar la planta seca";
+                if (patch.Empty && !patch.Tilled) return "[Clic] Carpir (" + Mathf.RoundToInt(patch.till * 100) + "%)";
+                return null;
+            }
+            if (!c.hasHit || Vector3.Dot(c.hit.normal, Vector3.up) < 0.7f) return null;
+            var lot = LandPlot.At(c.hit.point);
+            if (lot == null) return null;
+            if (!lot.owned) return lot.displayName + ": " + Loc.T("no es tuyo (se compra en la computadora)");
+            if (!LandPlot.CanFarm(c.hit.point)) return null;
+            return SoilPatch.FreeAt(c.hit.point, SoilPatch.MinDistance) ? "[Clic] Carpir acá" : "Muy pegado a otro surco";
         }
 
         public override void Use(UseContext c)
         {
-            var bed = c.Get<GardenBed>();
-            if (bed == null || bed.locked) return;
+            var patch = c.Get<SoilPatch>();
+            if (patch != null)
+            {
+                StartCoroutine(Swing());
+                if (!patch.Empty && patch.dead) { patch.Clear(); Sfx.Play("dig"); }
+                else if (patch.Empty && !patch.Tilled) { patch.Till(0.5f); Sfx.Play("dig"); }
+                return;
+            }
+            if (!c.hasHit || Vector3.Dot(c.hit.normal, Vector3.up) < 0.7f) return;
+            var p = c.hit.point;
+            if (!LandPlot.CanFarm(p))
+            {
+                var lot = LandPlot.At(p);
+                if (lot != null && !lot.owned) HUD.Toast(lot.displayName + " no es tuyo todavía. Se compra en la computadora (Mejoras).");
+                return;
+            }
+            if (!SoilPatch.FreeAt(p, SoilPatch.MinDistance)) { HUD.Toast("Muy pegado a otro surco"); return; }
             StartCoroutine(Swing());
-            var plant = c.Get<Plant>();
-            if (plant != null && plant.dead) { plant.Clear(); Sfx.Play("dig"); return; }
-            if (!bed.tilled) { bed.Till(0.25f); Sfx.Play("dig"); }
-            else HUD.Toast("El cantero ya está carpido. Ahora sembrá.");
+            var np = SoilPatch.Create(p);
+            np.till = 0.5f;
+            Sfx.Play("dig");
         }
     }
 }

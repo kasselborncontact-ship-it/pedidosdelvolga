@@ -74,7 +74,7 @@ namespace LaTranquera
 
         public override string GetUsePrompt(UseContext c)
         {
-            var plant = c.Get<Plant>();
+            var plant = c.Get<SoilPatch>();
             if (plant != null && plant.Ripe) return "[Clic] Cosechar " + Loc.T(plant.Crop.name) + " en el cajón";
             if (count > 0 && isOpen)
             {
@@ -90,7 +90,7 @@ namespace LaTranquera
 
         public override void Use(UseContext c)
         {
-            var plant = c.Get<Plant>();
+            var plant = c.Get<SoilPatch>();
             if (plant != null && plant.Ripe)
             {
                 var crop = plant.Crop;

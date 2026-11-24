@@ -12,6 +12,9 @@ namespace LaTranquera
         public string kind;     // "box" (caja de producto), "seeds" (sobre), "crate" (cajón vacío)
         public string refId;    // producto o cultivo
         public int units;       // unidades por caja / semillas por sobre
+
+        /// <summary>Las semillas de cultivos nuevos aparecen cuando comprás la mejora.</summary>
+        public bool Available => kind != "seeds" || Upgrades.Has(CropDB.Get(refId)?.unlock);
     }
 
     public static class SupplierCatalog

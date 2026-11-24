@@ -14,8 +14,8 @@ namespace LaTranquera
         public Vector2 areaMin = new Vector2(-90, -40);
         public Vector2 areaMax = new Vector2(90, 90);
         [Tooltip("Matas por metro cuadrado")]
-        public float density = 2.5f;
-        public float drawDistance = 60f;
+        public float density = 4f;
+        public float drawDistance = 45f;
         public float chunkSize = 10f;
         public int seed = 12345;
         /// <summary>Rectángulos sin pasto (x, z, ancho, largo) en coordenadas del mundo.</summary>
@@ -40,29 +40,44 @@ namespace LaTranquera
             Generate();
         }
 
+        /// <summary>Mata de 9 hojas finas y curvas. UV.y = altura (0 al pie, 1 en la punta) para el viento y el color.</summary>
         static Mesh BuildTuft()
         {
             var v = new List<Vector3>();
             var n = new List<Vector3>();
+            var uv = new List<Vector2>();
             var tri = new List<int>();
             var r = new System.Random(7);
             int blades = 7;
             for (int i = 0; i < blades; i++)
             {
                 float a = (float)(r.NextDouble() * Mathf.PI * 2);
-                float h = 0.22f + (float)r.NextDouble() * 0.25f;
-                float w = 0.025f + (float)r.NextDouble() * 0.015f;
+                float h = 0.28f + (float)r.NextDouble() * 0.32f;
+                float w = 0.018f + (float)r.NextDouble() * 0.012f;
                 var dir = new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a));
                 var side = new Vector3(-dir.z, 0, dir.x);
-                var basePos = dir * (float)r.NextDouble() * 0.08f;
-                var lean = dir * (0.05f + (float)r.NextDouble() * 0.12f);
-                int b = v.Count;
-                v.Add(basePos - side * w); v.Add(basePos + side * w); v.Add(basePos + lean + Vector3.up * h);
-                for (int k = 0; k < 3; k++) n.Add(Vector3.up); // normales hacia arriba: se ilumina como un colchón de pasto
-                tri.Add(b); tri.Add(b + 2); tri.Add(b + 1);
+                var basePos = dir * (float)r.NextDouble() * 0.1f;
+                float lean = 0.08f + (float)r.NextDouble() * 0.18f;
+                int b0 = v.Count;
+                const int seg = 3;
+                for (int k = 0; k <= seg; k++)
+                {
+                    float t = k / (float)seg;
+                    var center = basePos + dir * lean * t * t + Vector3.up * h * t;
+                    float ww = w * (1 - t * 0.9f);
+                    v.Add(center - side * ww); v.Add(center + side * ww);
+                    n.Add(Vector3.up); n.Add(Vector3.up);
+                    uv.Add(new Vector2(0, t)); uv.Add(new Vector2(1, t));
+                }
+                for (int k = 0; k < seg; k++)
+                {
+                    int q = b0 + k * 2;
+                    tri.Add(q); tri.Add(q + 2); tri.Add(q + 1);
+                    tri.Add(q + 1); tri.Add(q + 2); tri.Add(q + 3);
+                }
             }
             var m = new Mesh { name = "MataDePasto" };
-            m.SetVertices(v); m.SetNormals(n); m.SetTriangles(tri, 0);
+            m.SetVertices(v); m.SetNormals(n); m.SetUVs(0, uv); m.SetTriangles(tri, 0);
             m.RecalculateBounds();
             return m;
         }
@@ -114,18 +129,21 @@ namespace LaTranquera
                 var c = chunks[i];
                 Vector3 d = c.center - cp; d.y = 0;
                 if (d.sqrMagnitude > maxD) continue;
+                // lejos se dibuja la mitad (no se nota y es mucho más liviano)
+                float share = d.sqrMagnitude > 25f * 25f ? 0.5f : 1f;
                 for (int m = 0; m < materials.Length; m++)
                 {
                     var arr = c.arrays[m];
-                    if (arr.Length == 0) continue;
+                    int count = Mathf.CeilToInt(arr.Length * share);
+                    if (count == 0) continue;
                     var rp = new RenderParams(materials[m])
                     {
                         shadowCastingMode = ShadowCastingMode.Off,
                         receiveShadows = true,
                         worldBounds = new Bounds(c.center + Vector3.up, new Vector3(chunkSize + 1, 3, chunkSize + 1))
                     };
-                    for (int start = 0; start < arr.Length; start += 1000)
-                        Graphics.RenderMeshInstanced(rp, tuft, 0, arr, Mathf.Min(1000, arr.Length - start), start);
+                    for (int start = 0; start < count; start += 1000)
+                        Graphics.RenderMeshInstanced(rp, tuft, 0, arr, Mathf.Min(1000, count - start), start);
                 }
             }
         }

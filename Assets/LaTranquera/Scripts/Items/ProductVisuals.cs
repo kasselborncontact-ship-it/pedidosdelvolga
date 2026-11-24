@@ -93,6 +93,44 @@ namespace LaTranquera
                     Shapes.Box(t, "Pan", Vector3.zero, s, new Color(0.95f, 0.85f, 0.35f), false);
                     Shapes.Box(t, "Banda", new Vector3(0, 0, 0), new Vector3(s.x * 0.3f, s.y * 1.02f, s.z * 1.02f), new Color(0.2f, 0.35f, 0.75f), false);
                     break;
+                case ProductShape.Cebolla:
+                    Shapes.Sphere(t, "Bulbo", Vector3.up * 0.04f, new Vector3(0.08f, 0.075f, 0.08f), new Color(0.78f, 0.55f, 0.3f));
+                    Shapes.Cone(t, "Cuello", Vector3.up * 0.07f, 0.03f, 0.04f, new Color(0.7f, 0.5f, 0.28f));
+                    break;
+                case ProductShape.Papa:
+                {
+                    var g = Shapes.Sphere(t, "Papa", Vector3.up * 0.03f, new Vector3(0.1f, 0.06f, 0.07f), new Color(0.72f, 0.58f, 0.38f));
+                    g.transform.localRotation = Quaternion.Euler(0, 20, 8);
+                    Shapes.Sphere(t, "Bulto", new Vector3(0.025f, 0.035f, 0.01f), new Vector3(0.05f, 0.045f, 0.05f), new Color(0.7f, 0.56f, 0.36f));
+                    break;
+                }
+                case ProductShape.Choclo:
+                {
+                    var c = Shapes.CylC(t, "Granos", new Vector3(0, 0.035f, 0), 0.055f, 0.2f, new Color(0.98f, 0.85f, 0.25f), new Vector3(0, 0, 90));
+                    Shapes.CylC(t, "Chala", new Vector3(-0.06f, 0.035f, 0.012f), 0.06f, 0.16f, new Color(0.55f, 0.72f, 0.35f), new Vector3(0, 8, 90));
+                    Shapes.CylC(t, "Chala2", new Vector3(-0.07f, 0.03f, -0.012f), 0.058f, 0.15f, new Color(0.62f, 0.78f, 0.4f), new Vector3(0, -10, 90));
+                    break;
+                }
+                case ProductShape.Zapallo:
+                {
+                    // zapallo anco: forma de pera acostada
+                    var tan = new Color(0.88f, 0.68f, 0.38f);
+                    Shapes.Sphere(t, "Panza", new Vector3(-0.06f, 0.07f, 0), new Vector3(0.16f, 0.14f, 0.15f), tan);
+                    Shapes.CylC(t, "Cuello", new Vector3(0.06f, 0.06f, 0), 0.09f, 0.16f, tan, new Vector3(0, 0, 90));
+                    Shapes.Sphere(t, "Punta", new Vector3(0.14f, 0.06f, 0), new Vector3(0.09f, 0.09f, 0.09f), tan);
+                    break;
+                }
+                case ProductShape.Sandia:
+                {
+                    var sph = Shapes.Prim(PrimitiveType.Sphere, t, "Sandia", Vector3.up * 0.12f, new Vector3(0.24f, 0.36f, 0.24f), TexKit.Mat("sandia", Color.white, 0.4f), false);
+                    sph.transform.localRotation = Quaternion.Euler(0, 0, 90);
+                    break;
+                }
+                case ProductShape.Frutilla:
+                    Shapes.Box(t, "Bandeja", Vector3.zero, new Vector3(0.17f, 0.035f, 0.12f), new Color(0.95f, 0.95f, 0.92f), false);
+                    for (int i = 0; i < 6; i++)
+                        Shapes.Sphere(t, "Frutilla", new Vector3((i % 3 - 1) * 0.045f, 0.045f, (i / 3 - 0.5f) * 0.05f), new Vector3(0.04f, 0.045f, 0.04f), new Color(0.85f, 0.08f, 0.1f));
+                    break;
             }
             return root;
         }
@@ -103,9 +141,19 @@ namespace LaTranquera
         {
             var root = new GameObject("Vis_semillas_" + cropId);
             root.transform.SetParent(parent, false);
-            Color c = cropId == "tomate" ? new Color(0.85f, 0.2f, 0.15f)
-                    : cropId == "zanahoria" ? new Color(0.95f, 0.55f, 0.15f)
-                    : new Color(0.4f, 0.75f, 0.3f);
+            Color c;
+            switch (cropId)
+            {
+                case "tomate": c = new Color(0.85f, 0.2f, 0.15f); break;
+                case "zanahoria": c = new Color(0.95f, 0.55f, 0.15f); break;
+                case "cebolla": c = new Color(0.75f, 0.5f, 0.3f); break;
+                case "papa": c = new Color(0.65f, 0.5f, 0.3f); break;
+                case "maiz": c = new Color(0.95f, 0.82f, 0.2f); break;
+                case "zapallo": c = new Color(0.88f, 0.65f, 0.3f); break;
+                case "sandia": c = new Color(0.2f, 0.5f, 0.2f); break;
+                case "frutilla": c = new Color(0.9f, 0.1f, 0.2f); break;
+                default: c = new Color(0.4f, 0.75f, 0.3f); break;
+            }
             Shapes.Box(root.transform, "Sobre", Vector3.zero, new Vector3(0.1f, 0.14f, 0.012f), new Color(0.95f, 0.93f, 0.85f), false);
             Shapes.Box(root.transform, "Dibujo", new Vector3(0, 0.035f, 0), new Vector3(0.08f, 0.08f, 0.014f), c, false);
             return root;

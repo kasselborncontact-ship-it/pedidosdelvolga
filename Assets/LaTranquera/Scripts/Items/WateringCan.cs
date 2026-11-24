@@ -8,7 +8,8 @@ namespace LaTranquera
     {
         public float liters;
         public float capacity = 10f;
-        public const float PerPour = 2.5f;
+        public const float PerPlant = 1f;
+        public const float Radius = 1.0f;
         Transform waterLevel;
 
         public float Liters { get => liters; set { liters = Mathf.Clamp(value, 0, capacity); RefreshWater(); } }
@@ -45,24 +46,45 @@ namespace LaTranquera
 
         public override string GetName(UseContext c) => Loc.T(displayName) + " (" + liters.ToString("0.#") + " L / " + capacity + " L)";
 
+        static System.Collections.Generic.List<SoilPatch> Near(Vector3 p)
+        {
+            var list = new System.Collections.Generic.List<SoilPatch>();
+            foreach (var s in SoilPatch.All)
+            {
+                var d = s.transform.position - p; d.y = 0;
+                if (d.magnitude <= Radius) list.Add(s);
+            }
+            return list;
+        }
+
         public override string GetUsePrompt(UseContext c)
         {
             if (c.Get<WaterSource>() != null) return liters < capacity ? "[Clic] Llenar la regadera" : "La regadera está llena";
-            var bed = c.Get<GardenBed>();
-            if (bed != null && !bed.locked)
-                return liters >= PerPour ? "[Clic] Regar (" + Mathf.RoundToInt(bed.water * 100) + "% de humedad)" : "La regadera está vacía: llenala en el pozo";
-            return null;
+            if (!c.hasHit) return null;
+            var near = Near(c.hit.point);
+            if (near.Count == 0) return null;
+            if (liters < PerPlant) return "La regadera está vacía: llenala en el aljibe";
+            float min = 1f;
+            foreach (var s in near) min = Mathf.Min(min, s.water);
+            return "[Clic] Regar " + near.Count + (near.Count == 1 ? " planta" : " plantas") + " (humedad " + Mathf.RoundToInt(min * 100) + "%)";
         }
 
         public override void Use(UseContext c)
         {
             var src = c.Get<WaterSource>();
             if (src != null) { src.Fill(this); return; }
-            var bed = c.Get<GardenBed>();
-            if (bed == null || bed.locked) return;
-            if (liters < PerPour) { HUD.Toast("La regadera está vacía"); return; }
-            Liters -= PerPour;
-            bed.AddWater(0.5f);
+            if (!c.hasHit) return;
+            var near = Near(c.hit.point);
+            if (near.Count == 0) return;
+            if (liters < PerPlant) { HUD.Toast("La regadera está vacía"); return; }
+            int n = 0;
+            foreach (var s in near)
+            {
+                if (liters < PerPlant) break;
+                s.AddWater(0.5f);
+                Liters -= PerPlant;
+                n++;
+            }
             StartCoroutine(Swing(35f, 0.6f));
             Sfx.Play("water", 0.5f);
         }

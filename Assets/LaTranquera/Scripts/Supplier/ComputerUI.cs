@@ -111,6 +111,7 @@ namespace LaTranquera
 
             foreach (var e in SupplierCatalog.All)
             {
+                if (!e.Available) continue;
                 var card = UIKit.Panel(grid, "Tarjeta_" + e.id, Color.white, Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
                 var icon = UIKit.Rect(card.transform, "Foto", new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(-75, -160), new Vector2(75, -10));
                 var raw = icon.gameObject.AddComponent<RawImage>();
@@ -250,25 +251,26 @@ namespace LaTranquera
         {
             var list = UIKit.ScrollArea(content, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             UIKit.VList(list, 8);
-            int n = 0;
-            foreach (var bed in GardenBed.All)
+            foreach (var d in Upgrades.All)
             {
-                if (!bed.locked) continue;
-                n++;
-                var b = bed;
-                var row = UIKit.Panel(list, "Mejora", Color.white, Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
-                UIKit.Size(row, -1, 70);
+                var def = d;
+                bool has = Upgrades.Has(d.id), can = Upgrades.CanBuy(d);
+                var row = UIKit.Panel(list, "Mejora", has ? new Color(0.85f, 0.95f, 0.85f) : Color.white, Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+                UIKit.Size(row, -1, 78);
                 UIKit.HList(row.transform, 12, 8);
-                var l = UIKit.Label(row.transform, "Cantero extra para la huerta (" + b.bedId + ")", 22, Color.black); UIKit.Size(l, 700, -1);
-                var pl = UIKit.Label(row.transform, Money.Fmt(b.unlockPrice), 24, Accent); UIKit.Size(pl, 200, -1);
-                UIKit.Size(UIKit.Button(row.transform, "Comprar", Accent, () =>
+                var l = UIKit.Label(row.transform, d.name + "\n<size=17><color=#555>" + d.detail + "</color></size>", 22, Color.black);
+                l.supportRichText = true;
+                UIKit.Size(l, 760, -1);
+                var pl = UIKit.Label(row.transform, Money.Fmt(d.price), 24, Accent); UIKit.Size(pl, 170, -1);
+                if (has) UIKit.Size(UIKit.Label(row.transform, "Comprado", 22, Accent, TextAnchor.MiddleCenter), 200, -1);
+                else if (!can) UIKit.Size(UIKit.Label(row.transform, "Primero: " + Upgrades.All.Find(x => x.id == d.requires)?.name, 16, new Color(0.5f, 0.5f, 0.5f)), 200, -1);
+                else UIKit.Size(UIKit.Button(row.transform, "Comprar", Accent, () =>
                 {
-                    if (Economy.I.TrySpend(b.unlockPrice, "Cantero")) { b.Unlock(); Sfx.Play("ok"); HUD.Toast("¡Nuevo cantero listo en la huerta!"); }
+                    if (Upgrades.Buy(def.id)) { Sfx.Play("ok"); HUD.Toast("¡Compraste: " + def.name + "!"); }
                     Rebuild();
-                }), 180, -1);
+                }), 200, -1);
             }
-            if (n == 0) UIKit.Size(UIKit.Label(list, "Ya compraste todos los canteros.", 22, Dark), -1, 50);
-            foreach (var soon in new[] { "Corral y gallinero (Fase 2)", "Ternera, ternero, lechón y pollitos (Fase 2)", "Cámara de frío y sierra (Fase 3)", "Ordeñadora y tanque de leche (Fase 4)", "Repartidor con camioneta (Fase 5)" })
+            foreach (var soon in new[] { "Ampliar el almacén", "Corral y gallinero (Fase 2)", "Ternera, ternero, lechón y pollitos (Fase 2)", "Cámara de frío y sierra (Fase 3)", "Ordeñadora y tanque de leche (Fase 4)", "Repartidor con camioneta (Fase 5)" })
                 UIKit.Size(UIKit.Label(list, "Próximamente: " + soon, 20, new Color(0.5f, 0.5f, 0.5f)), -1, 40);
         }
 

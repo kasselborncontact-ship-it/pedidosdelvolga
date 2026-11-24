@@ -62,11 +62,9 @@ namespace LaTranquera
         // ---------------- Movimiento ----------------
         IEnumerator WalkTo(Vector3 target)
         {
-            target.y = transform.position.y;
             moving = true;
-            while ((transform.position - target).sqrMagnitude > 0.01f)
+            while (!StepTowards(target))
             {
-                StepTowards(target);
                 yield return null;
             }
             moving = false;
@@ -75,8 +73,8 @@ namespace LaTranquera
         /// <summary>Un paso hacia el destino. Devuelve true si llegó.</summary>
         bool StepTowards(Vector3 target)
         {
-            target.y = transform.position.y;
             var to = target - transform.position;
+            to.y = 0;
             if (to.sqrMagnitude < 0.0025f) { moving = false; return true; }
             moving = true;
             transform.position = Vector3.MoveTowards(transform.position, target, speed * Time.deltaTime);

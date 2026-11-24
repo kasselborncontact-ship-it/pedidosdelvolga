@@ -5,24 +5,27 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.Rendering;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
+using W = LaTranquera.EditorTools.WorldParts;
 
 namespace LaTranquera.EditorTools
 {
     /// <summary>
     /// Menú "La Tranquera > Construir escena Fase 1".
-    /// Arma TODA la escena jugable: mapa, ruta, almacén, huerta, pozo, galpón, casa,
-    /// sistemas y jugador. Después podés mover y cambiar lo que quieras a mano.
+    /// Arma TODA la escena jugable con un clic. Después podés mover y cambiar lo que quieras a mano.
     ///
-    /// Coordenadas del mapa (metros): la ruta corre de oeste a este sobre Z = 0.
-    /// El almacén está al norte de la ruta (Z 16 a 22), la huerta al oeste, el galpón al este
-    /// y la casa atrás del almacén.
+    /// Plano (metros). La ruta corre de oeste a este sobre Z = 0. Al norte de la ruta:
+    ///  - Casa de campo (X -10 a 11, Z 16 a 28) con galería al frente:
+    ///      adelante al centro el ALMACÉN, a la izquierda el DORMITORIO, a la derecha el DEPÓSITO;
+    ///      atrás el COMEDOR, la COCINA y el BAÑO. Atrás de la casa, el patio con el aljibe.
+    ///  - Al oeste, los terrenos para sembrar (Lote 1 es tuyo; 2 y 3 se compran).
+    ///  - Al este, la tranquera y el camino de tierra que va al galpón del tambo (al fondo).
     /// </summary>
     public static class SceneBuilder
     {
         const string ScenePath = "Assets/LaTranquera/Scenes/Fase1.unity";
-        const float CT = 0.96f; // altura de la tapa del mostrador
+        const float FL = 0.12f;            // altura del piso de la casa y la galería
+        const float CT = FL + 0.93f;       // tapa del mostrador
+        const float WH = 3.4f;             // altura de las paredes (techos altos de casa vieja)
 
         static Transform estatico, interactivo;
         static System.Random rnd;
@@ -48,27 +51,33 @@ namespace LaTranquera.EditorTools
 
             try
             {
-                EditorUtility.DisplayProgressBar("La Tranquera", "Cielo y luz...", 0.05f);
+                Progress("Cielo y luz...", 0.03f);
                 var sun = Lighting();
-                EditorUtility.DisplayProgressBar("La Tranquera", "Terreno y ruta...", 0.15f);
+                Progress("Terreno, ruta y caminos...", 0.08f);
                 Ground();
                 Road();
                 Paths();
-                EditorUtility.DisplayProgressBar("La Tranquera", "Almacén...", 0.3f);
+                Progress("Casa de campo...", 0.2f);
+                House();
+                Progress("Almacén...", 0.35f);
                 var store = Store();
-                EditorUtility.DisplayProgressBar("La Tranquera", "Galpón y casa...", 0.45f);
-                var galpon = Galpon();
-                var bed = House();
-                EditorUtility.DisplayProgressBar("La Tranquera", "Huerta y pozo...", 0.55f);
-                var crateSpots = Garden();
-                Well();
-                EditorUtility.DisplayProgressBar("La Tranquera", "Alambrados y árboles...", 0.7f);
+                Progress("Depósito...", 0.45f);
+                var dep = Deposito();
+                Progress("Comedor, cocina, dormitorio y baño...", 0.5f);
+                var bed = Rooms();
+                Progress("Patio y aljibe...", 0.6f);
+                Patio();
+                Progress("Terrenos para sembrar...", 0.65f);
+                var crateSpots = Farmland();
+                Progress("Camino de tierra, tambo y corrales...", 0.72f);
+                var gate = BackField();
+                Progress("Alambrados y árboles...", 0.8f);
                 Fences();
                 Trees();
                 Hills();
                 Grass();
-                EditorUtility.DisplayProgressBar("La Tranquera", "Sistemas y jugador...", 0.85f);
-                Systems(store, galpon, bed, crateSpots);
+                Progress("Sistemas y jugador...", 0.9f);
+                Systems(store, dep, bed, crateSpots);
                 Player();
                 sun.GetComponent<DayNightCycle>().nightLights = new List<Light>(nightLights);
 
@@ -95,6 +104,8 @@ namespace LaTranquera.EditorTools
             Debug.Log("Partida borrada: " + SaveSystem.PathFile);
         }
 
+        static void Progress(string msg, float k) => EditorUtility.DisplayProgressBar("La Tranquera", msg, k);
+
         static void SetStatic(GameObject go)
         {
             GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic);
@@ -103,12 +114,14 @@ namespace LaTranquera.EditorTools
 
         static Rect R(float x0, float z0, float x1, float z1) => new Rect(x0, z0, x1 - x0, z1 - z0);
 
-        /// <summary>Capa plana en el piso (camino, ripio). Sin collider, el piso ya lo tiene.</summary>
-        static void Flat(string name, float x0, float z0, float x1, float z1, Color c, float h = 0.02f, bool grassFree = true)
+        /// <summary>Capa plana en el piso (camino, ripio) con textura.</summary>
+        static void Flat(string name, float x0, float z0, float x1, float z1, Material m, float h = 0.02f, bool grassFree = true)
         {
-            Shapes.Box(estatico, name, new Vector3((x0 + x1) / 2, 0, (z0 + z1) / 2), new Vector3(x1 - x0, h, z1 - z0), c, false);
-            if (grassFree) noGrass.Add(R(x0, z0, x1, z1));
+            W.TBoxB(estatico, name, new Vector3((x0 + x1) / 2, 0, (z0 + z1) / 2), new Vector3(x1 - x0, h, z1 - z0), m, 0, false);
+            if (grassFree) noGrass.Add(R(x0 - 0.3f, z0 - 0.3f, x1 + 0.3f, z1 + 0.3f));
         }
+
+        static float Rf => (float)rnd.NextDouble();
 
         // ------------------------------------------------------------------
         static GameObject Lighting()
@@ -148,177 +161,233 @@ namespace LaTranquera.EditorTools
 
         static void Ground()
         {
-            Shapes.Box(estatico, "Piso", new Vector3(0, -0.1f, 0), new Vector3(1400, 0.1f, 1400), new Color(0.38f, 0.5f, 0.24f), true);
+            var g = W.TBoxB(estatico, "Piso", new Vector3(0, -0.2f, 0), new Vector3(1400, 0.2f, 1400), TexKit.Mat("pasto", Color.white), 0, true);
+            g.name = "Piso";
             // Campo sembrado del otro lado de la ruta (surcos de soja)
             var campo = Shapes.Empty(estatico, "CampoSembrado", Vector3.zero).transform;
-            Shapes.Box(campo, "Tierra", new Vector3(0, 0, -55), new Vector3(240, 0.02f, 70), new Color(0.4f, 0.32f, 0.22f), false);
+            W.TBoxB(campo, "Tierra", new Vector3(0, 0, -55), new Vector3(240, 0.02f, 70), TexKit.Mat("tierraArada", Color.white), 0, false);
             for (int i = 0; i < 34; i++)
-                Shapes.Box(campo, "Surco", new Vector3(0, 0.02f, -22f - i * 2f), new Vector3(238, 0.18f, 0.9f), new Color(0.35f, 0.55f, 0.2f), false);
+                Shapes.Box(campo, "Surco", new Vector3(0, 0.02f, -22f - i * 2f), new Vector3(238, 0.22f, 0.9f), new Color(0.33f, 0.52f, 0.2f), false);
             noGrass.Add(R(-120, -90, 120, -20));
         }
 
         static void Road()
         {
             var road = Shapes.Empty(estatico, "Ruta", Vector3.zero).transform;
-            Shapes.Box(road, "Asfalto", new Vector3(0, 0, 0), new Vector3(800, 0.04f, 7.2f), Mats.Asfalto, false);
+            W.TBoxB(road, "Asfalto", Vector3.zero, new Vector3(800, 0.04f, 7.2f), TexKit.Mat("asfalto", Color.white), 0, false);
             Shapes.Box(road, "LineaBordeN", new Vector3(0, 0.04f, 3.4f), new Vector3(800, 0.005f, 0.12f), Mats.Blanco, false);
             Shapes.Box(road, "LineaBordeS", new Vector3(0, 0.04f, -3.4f), new Vector3(800, 0.005f, 0.12f), Mats.Blanco, false);
             for (float x = -396; x < 400; x += 9)
                 Shapes.Box(road, "LineaCentral", new Vector3(x, 0.04f, 0), new Vector3(3.5f, 0.005f, 0.12f), new Color(0.95f, 0.85f, 0.3f), false);
-            Shapes.Box(road, "BanquinaN", new Vector3(0, 0, 4.6f), new Vector3(800, 0.03f, 2f), Mats.Ripio, false);
-            Shapes.Box(road, "BanquinaS", new Vector3(0, 0, -4.6f), new Vector3(800, 0.03f, 2f), Mats.Ripio, false);
+            W.TBoxB(road, "BanquinaN", new Vector3(0, 0, 4.6f), new Vector3(800, 0.03f, 2f), TexKit.Mat("ripio", Color.white), 0, false);
+            W.TBoxB(road, "BanquinaS", new Vector3(0, 0, -4.6f), new Vector3(800, 0.03f, 2f), TexKit.Mat("ripio", Color.white), 0, false);
             noGrass.Add(R(-400, -5.7f, 400, 5.7f));
 
             foreach (float x in new float[] { -90, -60, -30, 0, 30, 60, 90 })
             {
-                var l = WorldParts.StreetLight(road, new Vector3(x, 0, 5.4f), Vector3.back, Mathf.Abs(x) <= 30);
+                var l = W.StreetLight(road, new Vector3(x, 0, 5.4f), Vector3.back, Mathf.Abs(x) <= 30);
                 if (l != null) nightLights.Add(l);
             }
-            WorldParts.Sign(road, new Vector3(-14, 0, 5.2f), 180, "ALMACÉN LA TRANQUERA\nVerduras frescas · 50 m", new Vector2(2.4f, 0.9f));
-            WorldParts.Sign(road, new Vector3(16, 0, -5.2f), 0, "RUTA PROVINCIAL 5", new Vector2(1.8f, 0.5f));
+            W.Sign(road, new Vector3(-16, 0, 5.2f), 180, "ALMACÉN LA TRANQUERA\nVerduras frescas · 50 m", new Vector2(2.4f, 0.9f));
+            W.Sign(road, new Vector3(24, 0, -5.2f), 0, "RUTA PROVINCIAL 5", new Vector2(1.8f, 0.5f));
         }
 
         static void Paths()
         {
-            Color dirt = new Color(0.55f, 0.43f, 0.3f);
-            Flat("Estacionamiento (ripio)", -11, 5.6f, 16.5f, 15.5f, Mats.Ripio, 0.03f);
-            Flat("Vereda", -4.6f, 14.3f, 4.6f, 16f, new Color(0.7f, 0.68f, 0.64f), 0.06f);
-            Flat("Camino a la huerta", -13.5f, 22.0f, 0.7f, 23.4f, dirt);
-            Flat("Camino lateral", -5.6f, 15.5f, -4.2f, 23.4f, dirt);
-            Flat("Camino al pozo", -11.2f, 23.4f, -9.8f, 25.6f, dirt);
-            Flat("Camino a la casa", -0.7f, 23.4f, 0.7f, 33.5f, dirt);
-            Flat("Camino de la tranquera", 25f, 3.6f, 29f, 6.4f, Mats.Ripio, 0.03f);
-            Flat("Camino a los corrales", 26.3f, 6.4f, 27.7f, 28f, dirt);
+            var tierra = TexKit.Mat("tierra", Color.white);
+            var ripio = TexKit.Mat("ripio", Color.white);
+            Flat("Estacionamiento (ripio)", -10f, 5.6f, 14f, 13.2f, ripio, 0.03f);
+            Flat("Camino a los terrenos", -15f, 13.6f, -10.5f, 15.2f, tierra);
+            Flat("Camino a los terrenos 2", -15f, 15.2f, -13.6f, 23.5f, tierra);
+            Flat("Camino de tierra (tranquera)", 16f, 3.6f, 20f, 64f, tierra, 0.025f);
+            Flat("Playón del depósito", 11.2f, 17f, 16f, 26f, tierra, 0.02f);
+            Flat("Patio de tierra", -10.5f, 28.3f, 11.5f, 38f, tierra, 0.015f);
+            Flat("Playón del tambo", 8f, 50f, 32f, 56f, tierra, 0.02f);
+        }
+
+        // ------------------------------------------------------------------
+        /// <summary>El cascarón de la casa: pisos, paredes, techo de chapa a dos aguas, galería con columnas.</summary>
+        static void House()
+        {
+            var h = Shapes.Empty(estatico, "Casa de campo", Vector3.zero).transform;
+            var rev = W.Revoque;
+            noGrass.Add(R(-11f, 12.8f, 12f, 28.6f));
+
+            // Pisos (todos a la altura FL)
+            W.TBoxB(h, "Piso almacén", new Vector3(0, 0, 19), new Vector3(8, FL, 6), W.Calcareo);
+            W.TBoxB(h, "Piso dormitorio", new Vector3(-7, 0, 19), new Vector3(6, FL, 6), W.Madera);
+            W.TBoxB(h, "Piso comedor", new Vector3(0, 0, 25), new Vector3(8, FL, 6), W.Calcareo);
+            W.TBoxB(h, "Piso cocina", new Vector3(-7, 0, 25), new Vector3(6, FL, 6), W.Calcareo);
+            W.TBoxB(h, "Piso depósito", new Vector3(7.5f, 0, 22), new Vector3(7, FL, 12), W.Cemento);
+            W.TBoxB(h, "Piso galería", new Vector3(0.5f, 0, 14.6f), new Vector3(21.6f, FL, 2.8f), TexKit.Mat("calcareo", new Color(0.9f, 0.85f, 0.85f)));
+            W.TBoxB(h, "Escalón", new Vector3(0.5f, 0, 13.1f), new Vector3(21.6f, FL * 0.5f, 0.3f), W.Ladrillo);
+
+            float y0 = FL;
+            Vector3 P(float x, float z) => new Vector3(x, y0, z);
+            const float T = 0.25f; // paredes gruesas de ladrillo
+            // Frente (de este a oeste para que la derecha sea "afuera" = sur)
+            W.Wall(h, "Frente depósito", P(11, 16), P(4, 16), WH, T, rev, false, new W.Opening(2f, 4f, 1.0f, 2.3f, true));
+            W.Wall(h, "Frente almacén", P(4, 16), P(-4, 16), WH, T, rev, false,
+                new W.Opening(0.8f, 2.8f, 1.0f, 2.4f, true), new W.Opening(3.3f, 4.7f, 0, 2.6f), new W.Opening(5.2f, 7.2f, 1.0f, 2.4f, true));
+            W.Wall(h, "Frente dormitorio", P(-4, 16), P(-10, 16), WH, T, rev, false, new W.Opening(2.0f, 3.6f, 1.0f, 2.4f, true));
+            // Contrafrente (atrás)
+            W.Wall(h, "Fondo", P(-10, 28), P(11, 28), WH, T, rev, false,
+                new W.Opening(1.0f, 2.0f, 1.3f, 2.2f, true), new W.Opening(4.2f, 5.6f, 1.15f, 2.4f, true), new W.Opening(9.5f, 10.5f, 0, 2.4f), new W.Opening(18.5f, 20f, 1.1f, 2.3f, true));
+            // Costados
+            W.Wall(h, "Costado oeste", P(-10, 28), P(-10, 16), WH, T, rev, true, new W.Opening(1.0f, 1.9f, 1.4f, 2.2f, true), new W.Opening(8.2f, 9.6f, 1.2f, 2.4f, true));
+            W.Wall(h, "Costado este (portón)", P(11, 16), P(11, 28), WH, T, rev, true, new W.Opening(3.5f, 7.5f, 0, 3.0f));
+            // Paredes interiores
+            W.Wall(h, "Almacén|Depósito", P(4, 16), P(4, 28), WH, 0.2f, rev, true, new W.Opening(8.6f, 9.6f, 0, 2.3f));
+            W.Wall(h, "Almacén|Dormitorio", P(-4, 16), P(-4, 28), WH, 0.2f, rev, true, new W.Opening(8.6f, 9.6f, 0, 2.3f));
+            W.Wall(h, "Almacén|Comedor", P(-4, 22), P(4, 22), WH, 0.2f, rev, true, new W.Opening(0.2f, 1.1f, 0, 2.3f));
+            W.Wall(h, "Dormitorio|Cocina", P(-10, 22), P(-4, 22), WH, 0.2f, rev, true, new W.Opening(2.6f, 3.5f, 0, 2.3f));
+            W.Wall(h, "Baño", P(-10, 25.4f), P(-7.6f, 25.4f), WH, 0.15f, rev, true);
+            W.Wall(h, "Baño puerta", P(-7.6f, 25.4f), P(-7.6f, 28), WH, 0.15f, rev, true, new W.Opening(0.9f, 1.7f, 0, 2.2f));
+
+            // Zócalo de ladrillo visto en el frente y una cornisa
+            W.TBoxB(h, "Zócalo", new Vector3(0.5f, y0, 15.85f), new Vector3(21.2f, 0.75f, 0.08f), W.Ladrillo, 0, false);
+            W.TBoxB(h, "Cornisa", new Vector3(0.5f, y0 + WH - 0.25f, 15.85f), new Vector3(21.4f, 0.25f, 0.12f), rev, 0, false);
+
+            // Cielorraso de machimbre
+            W.TBoxB(h, "Cielorraso", new Vector3(0.5f, y0 + WH, 22), new Vector3(21, 0.05f, 12), W.Machimbre, 0, false);
+
+            // Techo de chapa a dos aguas (cumbrera a lo largo de X en Z = 22)
+            float eave = y0 + WH + 0.05f, ridge = eave + 2.2f;
+            W.ChapaSlope(h, "Techo sur", new Vector3(0.5f, eave, 15.85f), new Vector3(0.5f, ridge, 22), 22.2f, 0.5f);
+            W.ChapaSlope(h, "Techo norte", new Vector3(0.5f, eave, 28.15f), new Vector3(0.5f, ridge, 22), 22.2f, 0.5f);
+            Shapes.BoxC(h, "Cumbrera", new Vector3(0.5f, ridge + 0.05f, 22), new Vector3(22.3f, 0.08f, 0.35f), Mats.Get(Mats.Chapa, 0.5f, 0.6f), false);
+            // Mojinetes (triángulos de pared en los costados)
+            foreach (float x in new[] { -10f, 11f })
+            {
+                var b = new MeshKit.Builder(1);
+                MeshKit.AddExtrusion(b, 0, new List<Vector2> { new Vector2(15.9f, eave), new Vector2(28.1f, eave), new Vector2(22, ridge - 0.05f) }, 0.25f);
+                MeshKit.Object(h, "Mojinete", MeshKit.Persist("mojinete", () => b.Build()), new[] { rev }, new Vector3(x, 0, 0));
+            }
+            // Chimenea de la cocina a leña
+            W.TBoxB(h, "Chimenea", new Vector3(-9.3f, eave + 0.4f, 23.2f), new Vector3(0.6f, 2.4f, 0.6f), W.Ladrillo, 0, false);
+
+            // Galería: techo de chapa más bajo sobre columnas de madera
+            float galHigh = y0 + WH - 0.15f, galLow = y0 + 2.6f;
+            W.ChapaSlope(h, "Techo galería", new Vector3(0.5f, galLow, 13.2f), new Vector3(0.5f, galHigh, 15.9f), 22.2f, 0.25f);
+            W.TBoxB(h, "Viga galería", new Vector3(0.5f, galLow - 0.2f, 13.35f), new Vector3(21.8f, 0.2f, 0.15f), W.Madera, 0, false);
+            for (float x = -10.2f; x <= 11.3f; x += 3.07f)
+            {
+                W.TBoxB(h, "Columna", new Vector3(x, y0, 13.35f), new Vector3(0.16f, galLow - y0 - 0.2f, 0.16f), W.Madera);
+                Shapes.Beam(h, "Zapata", new Vector3(x - 0.35f, galLow - 0.2f, 13.35f), new Vector3(x, galLow - 0.55f, 13.35f), 0.08f, Mats.Madera);
+                Shapes.Beam(h, "Zapata", new Vector3(x + 0.35f, galLow - 0.2f, 13.35f), new Vector3(x, galLow - 0.55f, 13.35f), 0.08f, Mats.Madera);
+            }
+            // Faroles de la galería
+            foreach (float x in new[] { -5.5f, 5.5f })
+            {
+                Shapes.BoxC(h, "Farol", new Vector3(x, galLow - 0.45f, 13.6f), new Vector3(0.18f, 0.28f, 0.18f), Mats.Emissive(new Color(1f, 0.85f, 0.55f), 1.5f), false);
+                nightLights.Add(W.PointLight(h, new Vector3(x, galLow - 0.6f, 13.9f), 9f, 1.6f, new Color(1f, 0.8f, 0.5f)));
+            }
+            // Cartel grande arriba del alero
+            var sign = Shapes.Empty(h, "Cartel almacén", new Vector3(0, galLow + 0.15f, 13.25f)).transform;
+            W.TBoxB(sign, "Tabla", Vector3.zero, new Vector3(9f, 1.0f, 0.06f), TexKit.Mat("madera", new Color(0.95f, 0.9f, 0.75f)), 0, false);
+            W.TBoxB(sign, "Pata", new Vector3(-4f, -0.3f, 0.05f), new Vector3(0.1f, 0.5f, 0.1f), W.Madera, 0, false);
+            W.TBoxB(sign, "Pata", new Vector3(4f, -0.3f, 0.05f), new Vector3(0.1f, 0.5f, 0.1f), W.Madera, 0, false);
+            WorldLabel.Create(sign, "ALMACÉN DE RAMOS GENERALES\n\"LA TRANQUERA\"", new Vector3(0, 0.5f, -0.04f), new Vector2(8.8f, 0.95f), 340, new Color(0.45f, 0.12f, 0.08f), Vector3.back);
+            // Banco y macetas en la galería
+            W.TBoxB(h, "Banco", new Vector3(-6.5f, y0 + 0.42f, 15.4f), new Vector3(1.8f, 0.06f, 0.4f), W.Madera);
+            W.TBoxB(h, "PataBanco", new Vector3(-7.2f, y0, 15.4f), new Vector3(0.08f, 0.42f, 0.35f), W.Madera, 0, false);
+            W.TBoxB(h, "PataBanco", new Vector3(-5.8f, y0, 15.4f), new Vector3(0.08f, 0.42f, 0.35f), W.Madera, 0, false);
+            foreach (float x in new[] { -1.4f, 1.4f, 9f })
+            {
+                Shapes.Cyl(h, "Maceta", new Vector3(x, y0, 15.3f), 0.45f, 0.45f, new Color(0.7f, 0.35f, 0.2f), true);
+                NatureKit.Place(NatureKit.Tree.Arbusto, h, new Vector3(x, y0 + 0.35f, 15.3f), rnd.Next(), Rf * 360, 0.45f);
+            }
         }
 
         // ------------------------------------------------------------------
         public class StoreRefs
         {
-            public Shelf shelfA, shelfB, fridge;
-            public CheckoutCounter counter;
-            public CashDrawer drawer;
-            public ChangeTray tray;
-            public Posnet posnet;
-            public RegisterScreen screen;
             public ToolHook labelerHook;
-            public Transform[] queue;
-            public Transform customerPoint;
         }
 
         static StoreRefs Store()
         {
             var s = new StoreRefs();
-            var b = Shapes.Empty(estatico, "Almacen (edificio)", Vector3.zero).transform;
-            Color wall = Mats.Revoque;
-            Shapes.Box(b, "PisoBaldosas", new Vector3(0, 0, 19), new Vector3(8, 0.03f, 6), new Color(0.78f, 0.72f, 0.62f), true);
-            noGrass.Add(R(-4.3f, 15.7f, 4.3f, 22.3f));
-            float H = 3.1f;
-            WorldParts.Wall(b, "ParedFrente", new Vector3(-4, 0, 16), new Vector3(4, 0, 16), H, 0.15f, wall,
-                new WorldParts.Opening(0.8f, 2.8f, 1.0f, 2.1f, true), new WorldParts.Opening(3.4f, 4.6f, 0, 2.25f), new WorldParts.Opening(5.4f, 7.4f, 1.05f, 2.1f, true));
-            WorldParts.Wall(b, "ParedFondo", new Vector3(-4, 0, 22), new Vector3(4, 0, 22), H, 0.15f, wall);
-            WorldParts.Wall(b, "ParedOeste", new Vector3(-4, 0, 16), new Vector3(-4, 0, 22), H, 0.15f, wall);
-            WorldParts.Wall(b, "ParedEste", new Vector3(4, 0, 16), new Vector3(4, 0, 22), H, 0.15f, wall, new WorldParts.Opening(1.4f, 3f, 1.3f, 2.2f, true));
-            // zócalo de ladrillo afuera
-            Shapes.Box(b, "Zocalo", new Vector3(-2.3f, 0, 15.9f), new Vector3(3.4f, 0.6f, 0.06f), new Color(0.6f, 0.28f, 0.2f), false);
-            Shapes.Box(b, "Zocalo", new Vector3(2.3f, 0, 15.9f), new Vector3(3.4f, 0.6f, 0.06f), new Color(0.6f, 0.28f, 0.2f), false);
-            // techo de chapa
-            Shapes.BoxC(b, "Techo", new Vector3(0, H + 0.15f, 19), new Vector3(8.8f, 0.06f, 7f), Mats.Get(Mats.Chapa, 0.5f, 0.6f), true, new Vector3(-4, 0, 0));
-            // fachada con el nombre
-            Shapes.Box(b, "Fachada", new Vector3(0, H, 15.98f), new Vector3(8.2f, 1.0f, 0.14f), wall, true);
-            WorldLabel.Create(b, "ALMACÉN DE RAMOS GENERALES\nLA TRANQUERA", new Vector3(0, H + 0.5f, 15.9f), new Vector2(7.8f, 0.9f), 300, new Color(0.45f, 0.12f, 0.08f), Vector3.back);
-            // alero sobre la puerta
-            Shapes.BoxC(b, "Alero", new Vector3(0, 2.6f, 15.3f), new Vector3(3f, 0.05f, 1.4f), Mats.Get(Mats.Chapa, 0.5f, 0.6f), false, new Vector3(8, 0, 0));
-            Shapes.Cyl(b, "ColumnaAlero", new Vector3(-1.4f, 0, 14.7f), 0.1f, 2.55f, Mats.Madera, true);
-            Shapes.Cyl(b, "ColumnaAlero", new Vector3(1.4f, 0, 14.7f), 0.1f, 2.55f, Mats.Madera, true);
-            // cortina de tiras en la puerta
-            Color[] strips = { new Color(0.9f, 0.2f, 0.2f), new Color(0.2f, 0.5f, 0.9f), new Color(0.95f, 0.85f, 0.2f), new Color(0.2f, 0.7f, 0.3f) };
-            for (int i = 0; i < 12; i++)
-                Shapes.Box(b, "Tira", new Vector3(-0.55f + i * 0.1f, 1.0f, 16.0f), new Vector3(0.04f, 1.22f, 0.01f), strips[i % 4], false);
-            nightLights.Add(WorldParts.RoomLight(b, new Vector3(0, 2.45f, 15.2f), 9f, 1.5f));
-            WorldParts.RoomLight(b, new Vector3(0, 2.85f, 19f), 10f, 2.2f);
-            WorldParts.RoomLight(b, new Vector3(2.8f, 2.85f, 18.5f), 6f, 1.2f);
-
             var inter = Shapes.Empty(interactivo, "Almacen", Vector3.zero).transform;
 
+            // Puertas dobles del almacén (siempre abiertas para los clientes)
+            var verde = W.MaderaVerde;
+            var dl = W.MakeDoor(inter, "Puerta del almacén", new Vector3(-0.7f, FL, 16.05f), 0, 0.7f, 2.6f, true, -100f, verde);
+            var dr = W.MakeDoor(inter, "Puerta del almacén", new Vector3(0.7f, FL, 16.05f), 180, 0.7f, 2.6f, true, 100f, verde);
+            // cortina de tiras
+            Color[] strips = { new Color(0.9f, 0.2f, 0.2f), new Color(0.2f, 0.5f, 0.9f), new Color(0.95f, 0.85f, 0.2f), new Color(0.2f, 0.7f, 0.3f) };
+            for (int i = 0; i < 13; i++)
+                Shapes.Box(estatico, "Tira", new Vector3(-0.6f + i * 0.1f, FL + 1.25f, 16.0f), new Vector3(0.04f, 1.35f, 0.01f), strips[i % 4], false);
+
+            WorldParts.RoomLight(estatico, new Vector3(0, FL + WH - 0.65f, 19f), 10f, 2.2f);
+            WorldParts.RoomLight(estatico, new Vector3(2.9f, FL + WH - 0.65f, 18.5f), 6f, 1.2f);
+
             // --- Estanterías ---
-            s.shelfA = ShelfObj(inter, "Estanteria_1", "estanteria_1", new Vector3(-3.45f, 0.03f, 19f), 90, 2.4f, 0.42f, 4, 3, 0.12f, 0.44f, false, new Vector3(-2.5f, 0, 19f));
-            s.shelfB = ShelfObj(inter, "Estanteria_2", "estanteria_2", new Vector3(-1.3f, 0.03f, 21.65f), 180, 2.0f, 0.42f, 4, 3, 0.12f, 0.44f, false, new Vector3(-1.3f, 0, 20.75f));
-            s.fridge = ShelfObj(inter, "Heladera", "heladera_1", new Vector3(1.45f, 0.03f, 21.55f), 180, 1.4f, 0.5f, 4, 2, 0.28f, 0.42f, true, new Vector3(1.45f, 0, 20.55f));
+            ShelfObj(inter, "Estanteria_1", "estanteria_1", new Vector3(-3.6f, FL, 19f), 90, 2.4f, 0.42f, 4, 3, 0.12f, 0.44f, false, new Vector3(-2.6f, FL, 19f));
+            ShelfObj(inter, "Estanteria_2", "estanteria_2", new Vector3(-1.05f, FL, 21.65f), 180, 2.0f, 0.42f, 4, 3, 0.12f, 0.44f, false, new Vector3(-1.05f, FL, 20.75f));
+            ShelfObj(inter, "Heladera", "heladera_1", new Vector3(1.45f, FL, 21.55f), 180, 1.4f, 0.5f, 4, 2, 0.28f, 0.42f, true, new Vector3(1.45f, FL, 20.55f));
 
             // --- Mostrador ---
             var counterGo = Shapes.Empty(inter, "Mostrador", Vector3.zero);
             var ct = counterGo.transform;
-            Shapes.Box(ct, "Cuerpo", new Vector3(2.6f, 0.03f, 18.3f), new Vector3(0.6f, CT - 0.07f, 2.6f), Mats.Madera, true);
-            Shapes.Box(ct, "Frente", new Vector3(2.29f, 0.03f, 18.3f), new Vector3(0.02f, CT - 0.1f, 2.62f), new Color(0.45f, 0.3f, 0.18f), false);
-            Shapes.Box(ct, "Tapa", new Vector3(2.6f, CT - 0.04f, 18.3f), new Vector3(0.7f, 0.04f, 2.7f), new Color(0.82f, 0.78f, 0.7f), true);
+            W.TBoxB(ct, "Cuerpo", new Vector3(2.6f, FL, 18.3f), new Vector3(0.6f, CT - FL - 0.04f, 2.6f), W.Madera);
+            W.TBoxB(ct, "Frente", new Vector3(2.28f, FL, 18.3f), new Vector3(0.03f, CT - FL - 0.08f, 2.62f), TexKit.Mat("madera", new Color(0.75f, 0.6f, 0.45f)), 0, false);
+            Shapes.Box(ct, "Tapa", new Vector3(2.6f, CT - 0.04f, 18.3f), new Vector3(0.72f, 0.04f, 2.72f), new Color(0.85f, 0.82f, 0.75f), true);
             var co = counterGo.AddComponent<CheckoutCounter>();
-            s.counter = co;
-            co.customerPoint = Shapes.Empty(ct, "PuntoCliente", new Vector3(1.75f, 0, 18.4f), new Vector3(0, 90, 0)).transform;
-            s.customerPoint = co.customerPoint;
+            co.customerPoint = Shapes.Empty(ct, "PuntoCliente", new Vector3(1.75f, FL, 18.4f), new Vector3(0, 90, 0)).transform;
             co.queuePoints = new[]
             {
-                Shapes.Empty(ct, "Fila1", new Vector3(0.95f, 0, 18.4f), new Vector3(0, 90, 0)).transform,
-                Shapes.Empty(ct, "Fila2", new Vector3(0.15f, 0, 18.4f), new Vector3(0, 90, 0)).transform,
-                Shapes.Empty(ct, "Fila3", new Vector3(-0.65f, 0, 18.4f), new Vector3(0, 90, 0)).transform,
+                Shapes.Empty(ct, "Fila1", new Vector3(0.95f, FL, 18.4f), new Vector3(0, 90, 0)).transform,
+                Shapes.Empty(ct, "Fila2", new Vector3(0.15f, FL, 18.4f), new Vector3(0, 90, 0)).transform,
+                Shapes.Empty(ct, "Fila3", new Vector3(-0.65f, FL, 18.4f), new Vector3(0, 90, 0)).transform,
             };
             co.itemArea = Shapes.Empty(ct, "ZonaProductos", new Vector3(2.45f, CT, 18.75f)).transform;
             co.scanPoint = Shapes.Empty(ct, "Lector", new Vector3(2.58f, CT + 0.06f, 18.05f)).transform;
             co.bagPoint = Shapes.Empty(ct, "Embolsado", new Vector3(2.45f, CT, 17.3f)).transform;
             co.cashPoint = Shapes.Empty(ct, "PlataCliente", new Vector3(2.42f, CT, 17.72f)).transform;
-            // lector de código de barras
             Shapes.Box(ct, "LectorBase", new Vector3(2.58f, CT, 18.05f), new Vector3(0.18f, 0.03f, 0.16f), new Color(0.1f, 0.1f, 0.1f), false);
             Shapes.Box(ct, "LectorVidrio", new Vector3(2.58f, CT + 0.03f, 18.05f), new Vector3(0.12f, 0.003f, 0.1f), Mats.Emissive(new Color(1f, 0.15f, 0.1f), 1.5f), false);
             Shapes.Box(ct, "BolsaPapel", new Vector3(2.42f, CT, 17.15f), new Vector3(0.18f, 0.25f, 0.12f), new Color(0.8f, 0.68f, 0.5f), false);
+            // balanza vieja de almacén (decorativa)
+            var bal = Shapes.Empty(ct, "Balanza", new Vector3(2.62f, CT, 19.75f)).transform;
+            Shapes.Box(bal, "Base", Vector3.zero, new Vector3(0.3f, 0.12f, 0.25f), new Color(0.75f, 0.15f, 0.12f), false);
+            Shapes.Cyl(bal, "Plato", new Vector3(0, 0.12f, 0), 0.3f, 0.02f, new Color(0.8f, 0.8f, 0.82f), false);
+            Shapes.Box(bal, "Cuadrante", new Vector3(0, 0.12f, 0.08f), new Vector3(0.24f, 0.25f, 0.06f), Color.white, false);
+            bal.gameObject.AddComponent<BoxCollider>().size = new Vector3(0.3f, 0.4f, 0.3f);
+            var bd = bal.gameObject.AddComponent<Decor>(); bd.displayName = "Balanza de almacén"; bd.action = "[E] Mirar"; bd.message = "Una balanza de las de antes. (En la Fase 3 se usa para la carne.)";
 
-            // pantalla de la caja
-            var scr = Shapes.Empty(ct, "PantallaCaja", new Vector3(2.8f, CT, 19.3f), new Vector3(0, 90, 0));
-            s.screen = scr.AddComponent<RegisterScreen>();
-            s.screen.counter = co;
-            s.screen.Build();
-            co.screen = s.screen;
+            var scr = Shapes.Empty(ct, "PantallaCaja", new Vector3(2.8f, CT, 19.25f), new Vector3(0, 90, 0));
+            var screen = scr.AddComponent<RegisterScreen>();
+            screen.counter = co; screen.Build(); co.screen = screen;
 
-            // cajón de billetes (abajo de la tapa, del lado del jugador)
-            var dr = Shapes.Empty(ct, "CajonBilletes", new Vector3(2.72f, 0.7f, 18.3f), new Vector3(0, 90, 0));
-            s.drawer = dr.AddComponent<CashDrawer>();
-            s.drawer.Build();
-            co.drawer = s.drawer;
+            var dr2 = Shapes.Empty(ct, "CajonBilletes", new Vector3(2.72f, FL + 0.6f, 18.3f), new Vector3(0, 90, 0));
+            var drawer = dr2.AddComponent<CashDrawer>(); drawer.Build(); co.drawer = drawer;
 
-            // bandeja del vuelto
             var tr = Shapes.Empty(ct, "BandejaVuelto", new Vector3(2.76f, CT, 17.6f));
-            s.tray = tr.AddComponent<ChangeTray>();
-            s.tray.drawer = s.drawer;
-            s.tray.Build();
-            s.drawer.tray = s.tray;
-            co.tray = s.tray;
+            var tray = tr.AddComponent<ChangeTray>(); tray.drawer = drawer; tray.Build(); drawer.tray = tray; co.tray = tray;
 
-            // botón ENTREGAR
             var btn = Shapes.Box(ct, "BotonEntregar", new Vector3(2.8f, CT, 17.22f), new Vector3(0.12f, 0.05f, 0.12f), new Color(0.85f, 0.15f, 0.1f), true);
             btn.AddComponent<GiveChangeButton>().counter = co;
             WorldLabel.Create(ct, "ENTREGAR\nVUELTO", new Vector3(2.8f, CT + 0.052f, 17.22f), new Vector2(0.12f, 0.1f), 18, Color.white, Vector3.up, null, Vector3.left);
 
-            // posnet
             var pn = Shapes.Empty(ct, "Posnet", new Vector3(2.72f, CT, 18.6f), new Vector3(0, 90, 0));
-            s.posnet = pn.AddComponent<Posnet>();
-            s.posnet.counter = co;
-            s.posnet.Build();
-            co.posnet = s.posnet;
+            var posnet = pn.AddComponent<Posnet>(); posnet.counter = co; posnet.Build(); co.posnet = posnet;
 
             // computadora en el escritorio del fondo
-            var desk = Shapes.Empty(inter, "Computadora", new Vector3(3.6f, 0.03f, 21.25f), new Vector3(0, -90, 0)).transform;
-            Shapes.Box(desk, "Escritorio", Vector3.zero, new Vector3(1.1f, 0.75f, 0.6f), Mats.MaderaClara, true);
+            var desk = Shapes.Empty(inter, "Computadora", new Vector3(3.55f, FL, 21.25f), new Vector3(0, -90, 0)).transform;
+            W.TBoxB(desk, "Escritorio", Vector3.zero, new Vector3(1.1f, 0.75f, 0.6f), W.Madera);
             Shapes.Box(desk, "Monitor", new Vector3(0, 0.95f, 0.15f), new Vector3(0.5f, 0.36f, 0.05f), new Color(0.1f, 0.1f, 0.12f), true);
             Shapes.Box(desk, "PieMonitor", new Vector3(0, 0.75f, 0.15f), new Vector3(0.08f, 0.2f, 0.08f), new Color(0.1f, 0.1f, 0.12f), false);
             Shapes.Box(desk, "Teclado", new Vector3(0, 0.75f, -0.1f), new Vector3(0.4f, 0.02f, 0.14f), new Color(0.2f, 0.2f, 0.22f), false);
             WorldLabel.Create(desk, "PROVEEDOR\nPRECIOS · MEJORAS", new Vector3(0, 1.13f, 0.12f), new Vector2(0.46f, 0.32f), 40, new Color(0.7f, 0.9f, 1f), Vector3.back, new Color(0.08f, 0.2f, 0.35f));
             desk.gameObject.AddComponent<ComputerTerminal>();
 
-            // lugar de la etiquetadora
-            var lh = Shapes.Empty(inter, "LugarEtiquetadora", new Vector3(3.6f, 0.82f, 20.45f), new Vector3(0, -90, 0));
+            var lh = Shapes.Empty(inter, "LugarEtiquetadora", new Vector3(3.55f, FL + 0.79f, 20.45f), new Vector3(0, -90, 0));
             Shapes.Box(lh.transform, "Repisa", new Vector3(0, -0.02f, 0), new Vector3(0.3f, 0.02f, 0.25f), Mats.Madera, false);
             s.labelerHook = Hook(lh, "labeler", "Lugar de la etiquetadora", new Vector3(0.35f, 0.3f, 0.35f));
 
-            // cartel ABIERTO/CERRADO colgado en la vidriera
-            var sign = Shapes.Empty(inter, "CartelAbiertoCerrado", new Vector3(-2.2f, 1.45f, 16.15f));
+            // cartel ABIERTO/CERRADO colgado en la vidriera izquierda (mirando desde afuera)
+            var sign = Shapes.Empty(inter, "CartelAbiertoCerrado", new Vector3(-2.2f, FL + 1.55f, 16.22f));
             var board = Shapes.BoxC(sign.transform, "Tabla", Vector3.zero, new Vector3(0.7f, 0.28f, 0.02f), Color.white, true);
             Shapes.Beam(sign.transform, "Hilo", new Vector3(-0.3f, 0.14f, 0), new Vector3(0, 0.5f, 0), 0.005f, Color.black);
             Shapes.Beam(sign.transform, "Hilo", new Vector3(0.3f, 0.14f, 0), new Vector3(0, 0.5f, 0), 0.005f, Color.black);
@@ -327,11 +396,11 @@ namespace LaTranquera.EditorTools
             os.backText = WorldLabel.Create(sign.transform, "CERRADO", new Vector3(0, 0, 0.012f), new Vector2(0.66f, 0.26f), 130, Color.red, Vector3.forward);
             os.board = board.GetComponent<Renderer>();
 
-            // tacho de basura afuera
-            var bin = Shapes.Cyl(inter, "TachoBasura", new Vector3(1.6f, 0.06f, 15.1f), 0.45f, 0.75f, new Color(0.2f, 0.4f, 0.25f), true);
-            bin.AddComponent<TrashBin>();
+            // cuadros y almanaque viejo en la pared
+            W.TBox(estatico, "Almanaque", new Vector3(-3.88f, FL + 2.3f, 20.9f), new Vector3(0.02f, 0.5f, 0.35f), TexKit.Mat("revoque", new Color(1f, 0.9f, 0.7f)), 0, false);
 
-            s.queue = co.queuePoints;
+            var bin = Shapes.Cyl(inter, "TachoBasura", new Vector3(1.9f, FL, 14.4f), 0.45f, 0.75f, new Color(0.2f, 0.4f, 0.25f), true);
+            bin.AddComponent<TrashBin>();
             return s;
         }
 
@@ -352,19 +421,18 @@ namespace LaTranquera.EditorTools
         {
             var go = Shapes.Empty(parent, name, pos, new Vector3(0, yaw, 0));
             var t = go.transform;
-            Color frame = fridge ? new Color(0.92f, 0.92f, 0.94f) : new Color(0.5f, 0.55f, 0.6f);
-            Color board = fridge ? new Color(0.85f, 0.88f, 0.9f) : new Color(0.75f, 0.62f, 0.45f);
+            Material frame = fridge ? Mats.Get(new Color(0.92f, 0.92f, 0.94f), 0.5f) : W.Madera;
+            Material board = fridge ? Mats.Get(new Color(0.85f, 0.88f, 0.9f), 0.5f) : TexKit.Mat("madera", new Color(1f, 0.9f, 0.8f));
             float top = firstY + levels * spacing + 0.05f;
-            Shapes.Box(t, "LadoI", new Vector3(-width / 2 - 0.02f, 0, 0), new Vector3(0.04f, top, depth + 0.04f), frame, true);
-            Shapes.Box(t, "LadoD", new Vector3(width / 2 + 0.02f, 0, 0), new Vector3(0.04f, top, depth + 0.04f), frame, true);
-            Shapes.Box(t, "Fondo", new Vector3(0, 0, -depth / 2 - 0.02f), new Vector3(width + 0.08f, top, 0.03f), frame, true);
-            Shapes.Box(t, "Techo", new Vector3(0, top, 0), new Vector3(width + 0.08f, 0.04f, depth + 0.04f), frame, true);
-            Shapes.Box(t, "Zocalo", new Vector3(0, 0, 0), new Vector3(width, firstY - 0.01f, depth), frame, true);
+            W.TBoxB(t, "LadoI", new Vector3(-width / 2 - 0.02f, 0, 0), new Vector3(0.04f, top, depth + 0.04f), frame);
+            W.TBoxB(t, "LadoD", new Vector3(width / 2 + 0.02f, 0, 0), new Vector3(0.04f, top, depth + 0.04f), frame);
+            W.TBoxB(t, "Fondo", new Vector3(0, 0, -depth / 2 - 0.02f), new Vector3(width + 0.08f, top, 0.03f), frame);
+            W.TBoxB(t, "Techo", new Vector3(0, top, 0), new Vector3(width + 0.08f, 0.04f, depth + 0.04f), frame);
+            W.TBoxB(t, "Zocalo", Vector3.zero, new Vector3(width, firstY - 0.01f, depth), frame);
             for (int l = 0; l < levels; l++)
-                Shapes.Box(t, "Estante", new Vector3(0, firstY + l * spacing - 0.02f, 0), new Vector3(width, 0.02f, depth), board, true);
+                W.TBoxB(t, "Estante", new Vector3(0, firstY + l * spacing - 0.02f, 0), new Vector3(width, 0.02f, depth), board);
             if (fridge)
             {
-                // puertas de vidrio (sin collider para poder poner y sacar), luz interior y motor
                 Shapes.Prim(PrimitiveType.Cube, t, "PuertaVidrio", new Vector3(0, (firstY + top) / 2, depth / 2 + 0.03f), new Vector3(width, top - firstY, 0.015f),
                     Mats.Glass(new Color(0.75f, 0.9f, 1f, 0.18f)), false);
                 Shapes.Box(t, "LuzInterior", new Vector3(0, top - 0.04f, 0.05f), new Vector3(width * 0.9f, 0.02f, 0.05f), Mats.Emissive(new Color(0.9f, 0.95f, 1f), 1.5f), false);
@@ -377,217 +445,376 @@ namespace LaTranquera.EditorTools
             shelf.isFridge = fridge;
             shelf.width = width; shelf.depth = depth; shelf.levels = levels; shelf.slotsPerLevel = slots;
             shelf.firstLevelY = firstY; shelf.levelSpacing = spacing;
-            var cp = Shapes.Empty(parent, name + "_PuntoCliente", customerPos);
-            shelf.customerPoint = cp.transform;
+            shelf.customerPoint = Shapes.Empty(parent, name + "_PuntoCliente", customerPos).transform;
             return shelf;
         }
 
         // ------------------------------------------------------------------
-        public class GalponRefs
+        public class DepRefs
         {
             public ToolHook hoe, can, bucket;
             public Transform[] seedSpots, boxSpots;
             public Transform drop;
         }
 
-        static GalponRefs Galpon()
+        static DepRefs Deposito()
         {
-            var g = new GalponRefs();
-            var b = Shapes.Empty(estatico, "Galpon (edificio)", Vector3.zero).transform;
-            Color chapa = Mats.Chapa;
-            Shapes.Box(b, "Contrapiso", new Vector3(13, 0, 20), new Vector3(5, 0.04f, 6), new Color(0.6f, 0.6f, 0.58f), true);
-            noGrass.Add(R(10.3f, 16.8f, 15.7f, 23.2f));
-            float H = 3.2f;
-            WorldParts.Wall(b, "ChapaFrente", new Vector3(10.5f, 0, 17), new Vector3(15.5f, 0, 17), H, 0.06f, chapa, new WorldParts.Opening(0.9f, 4.1f, 0, 2.7f));
-            WorldParts.Wall(b, "ChapaFondo", new Vector3(10.5f, 0, 23), new Vector3(15.5f, 0, 23), H, 0.06f, chapa);
-            WorldParts.Wall(b, "ChapaOeste", new Vector3(10.5f, 0, 17), new Vector3(10.5f, 0, 23), H, 0.06f, chapa);
-            WorldParts.Wall(b, "ChapaEste", new Vector3(15.5f, 0, 17), new Vector3(15.5f, 0, 23), H, 0.06f, chapa);
-            Shapes.BoxC(b, "Techo", new Vector3(13, H + 0.2f, 20), new Vector3(5.6f, 0.05f, 6.6f), Mats.Get(Mats.Chapa, 0.5f, 0.6f), true, new Vector3(-5, 0, 0));
-            WorldLabel.Create(b, "GALPÓN · DEPÓSITO", new Vector3(13, 2.95f, 16.95f), new Vector2(3.2f, 0.4f), 220, new Color(0.15f, 0.15f, 0.15f), Vector3.back);
-            WorldParts.RoomLight(b, new Vector3(13, 2.9f, 20), 9f, 1.6f);
+            var d = new DepRefs();
+            var inter = Shapes.Empty(interactivo, "Deposito", Vector3.zero).transform;
+            WorldParts.RoomLight(estatico, new Vector3(7.5f, FL + WH - 0.65f, 19.5f), 9f, 1.6f);
+            WorldParts.RoomLight(estatico, new Vector3(7.5f, FL + WH - 0.65f, 25f), 9f, 1.6f);
+            WorldLabel.Create(estatico, "DEPÓSITO", new Vector3(11.15f, FL + 3.15f, 21.5f), new Vector2(3.5f, 0.4f), 260, new Color(0.15f, 0.15f, 0.15f), Vector3.right);
+            // portón corredizo abierto
+            W.TBoxB(estatico, "PortonCorredizo", new Vector3(11.2f, FL, 25.9f), new Vector3(0.06f, 3.0f, 4.1f), TexKit.Mat("madera", new Color(0.65f, 0.75f, 0.65f)), 0, true);
+            W.TBoxB(estatico, "RielPorton", new Vector3(11.25f, FL + 3.05f, 23.5f), new Vector3(0.06f, 0.08f, 9f), W.Hierro, 0, false);
 
-            var inter = Shapes.Empty(interactivo, "Galpon", Vector3.zero).transform;
             // tablero de herramientas en la pared del fondo
-            Shapes.Box(b, "Tablero", new Vector3(12.6f, 0.9f, 22.9f), new Vector3(3f, 1.3f, 0.04f), Mats.MaderaGris, false);
-            WorldLabel.Create(b, "HERRAMIENTAS", new Vector3(12.6f, 2.05f, 22.86f), new Vector2(2f, 0.2f), 120, Color.white, Vector3.back);
-            var hoe = Shapes.Empty(inter, "LugarAzada", new Vector3(11.6f, 0.05f, 22.7f));
-            g.hoe = Hook(hoe, "hoe", "Lugar de la azada", new Vector3(0.4f, 1.4f, 0.3f));
-            Shapes.Box(b, "RepisaHerr", new Vector3(13.1f, 0.85f, 22.65f), new Vector3(1.8f, 0.04f, 0.45f), Mats.Madera, true);
-            var can = Shapes.Empty(inter, "LugarRegadera", new Vector3(12.6f, 0.89f, 22.62f), new Vector3(0, 180, 0));
-            g.can = Hook(can, "can", "Lugar de la regadera", new Vector3(0.45f, 0.45f, 0.45f));
-            var bucket = Shapes.Empty(inter, "LugarBalde", new Vector3(13.6f, 0.89f, 22.62f));
-            g.bucket = Hook(bucket, "bucket", "Lugar del balde", new Vector3(0.4f, 0.45f, 0.4f));
-            // mesa de trabajo con las semillas
-            var mesa = Shapes.Empty(b, "MesaTrabajo", new Vector3(11.1f, 0, 19.7f)).transform;
-            Shapes.Box(mesa, "Tapa", new Vector3(0, 0.82f, 0), new Vector3(0.8f, 0.05f, 2.2f), Mats.MaderaClara, true);
-            foreach (var p in new[] { new Vector3(-0.35f, 0, -1f), new Vector3(0.35f, 0, -1f), new Vector3(-0.35f, 0, 1f), new Vector3(0.35f, 0, 1f) })
-                Shapes.Box(mesa, "Pata", p, new Vector3(0.06f, 0.82f, 0.06f), Mats.Madera, true);
-            g.seedSpots = new[]
+            W.TBoxB(estatico, "Tablero", new Vector3(6.4f, FL + 0.85f, 27.83f), new Vector3(3.2f, 1.4f, 0.04f), TexKit.Mat("madera", new Color(0.8f, 0.8f, 0.75f)), 0, false);
+            WorldLabel.Create(estatico, "HERRAMIENTAS", new Vector3(6.4f, FL + 2.4f, 27.8f), new Vector2(2f, 0.2f), 120, new Color(0.15f, 0.1f, 0.05f), Vector3.back);
+            d.hoe = Hook(Shapes.Empty(inter, "LugarAzada", new Vector3(5.1f, FL + 0.02f, 27.6f)), "hoe", "Lugar de la azada", new Vector3(0.4f, 1.4f, 0.3f));
+            W.TBoxB(estatico, "RepisaHerr", new Vector3(6.9f, FL + 0.8f, 27.6f), new Vector3(2.0f, 0.04f, 0.45f), W.Madera);
+            d.can = Hook(Shapes.Empty(inter, "LugarRegadera", new Vector3(6.4f, FL + 0.84f, 27.58f), new Vector3(0, 180, 0)), "can", "Lugar de la regadera", new Vector3(0.45f, 0.45f, 0.45f));
+            d.bucket = Hook(Shapes.Empty(inter, "LugarBalde", new Vector3(7.4f, FL + 0.84f, 27.58f)), "bucket", "Lugar del balde", new Vector3(0.4f, 0.45f, 0.4f));
+
+            // mesa de trabajo con las semillas (contra la pared del frente)
+            var mesa = Shapes.Empty(estatico, "MesaTrabajo", new Vector3(6.3f, FL, 16.6f)).transform;
+            W.TBoxB(mesa, "Tapa", new Vector3(0, 0.82f, 0), new Vector3(2.4f, 0.05f, 0.75f), W.Madera);
+            foreach (var p in new[] { new Vector3(-1.1f, 0, -0.3f), new Vector3(1.1f, 0, -0.3f), new Vector3(-1.1f, 0, 0.3f), new Vector3(1.1f, 0, 0.3f) })
+                W.TBoxB(mesa, "Pata", p, new Vector3(0.06f, 0.82f, 0.06f), W.Madera);
+            d.seedSpots = new[]
             {
-                Shapes.Empty(inter, "Semillas1", new Vector3(11.1f, 0.9f, 19.1f), new Vector3(0, 90, 0)).transform,
-                Shapes.Empty(inter, "Semillas2", new Vector3(11.1f, 0.9f, 19.6f), new Vector3(0, 90, 0)).transform,
-                Shapes.Empty(inter, "Semillas3", new Vector3(11.1f, 0.9f, 20.1f), new Vector3(0, 90, 0)).transform,
+                Shapes.Empty(inter, "Semillas1", new Vector3(5.7f, FL + 0.9f, 16.6f)).transform,
+                Shapes.Empty(inter, "Semillas2", new Vector3(6.3f, FL + 0.9f, 16.6f)).transform,
+                Shapes.Empty(inter, "Semillas3", new Vector3(6.9f, FL + 0.9f, 16.6f)).transform,
             };
-            g.boxSpots = new[]
+            // estanterías metálicas del depósito con bolsas (decorativas)
+            for (int i = 0; i < 2; i++)
             {
-                Shapes.Empty(inter, "Caja1", new Vector3(13.4f, 0.05f, 18.4f)).transform,
-                Shapes.Empty(inter, "Caja2", new Vector3(14.0f, 0.05f, 18.4f)).transform,
-                Shapes.Empty(inter, "Caja3", new Vector3(14.6f, 0.05f, 18.4f)).transform,
+                var r = Shapes.Empty(estatico, "Rack", new Vector3(4.45f, FL, 18f + i * 2.4f), new Vector3(0, 90, 0)).transform;
+                Color metal = new Color(0.4f, 0.45f, 0.55f);
+                foreach (var x in new[] { -1f, 1f }) foreach (var z in new[] { -0.25f, 0.25f })
+                    Shapes.Box(r, "Parante", new Vector3(x, 0, z), new Vector3(0.04f, 2.2f, 0.04f), metal, false);
+                for (int k = 0; k < 4; k++)
+                {
+                    Shapes.Box(r, "Estante", new Vector3(0, 0.15f + k * 0.65f, 0), new Vector3(2.0f, 0.03f, 0.5f), metal, true);
+                    for (int j = 0; j < 3; j++)
+                        if (rnd.NextDouble() < 0.7)
+                            Shapes.Box(r, "Bolsa", new Vector3(-0.6f + j * 0.6f, 0.18f + k * 0.65f, 0), new Vector3(0.45f, 0.25f, 0.35f),
+                                j % 2 == 0 ? new Color(0.85f, 0.8f, 0.65f) : new Color(0.7f, 0.6f, 0.45f), false);
+                }
+            }
+            d.boxSpots = new[]
+            {
+                Shapes.Empty(inter, "Caja1", new Vector3(9.6f, FL + 0.05f, 18f)).transform,
+                Shapes.Empty(inter, "Caja2", new Vector3(9.6f, FL + 0.05f, 18.7f)).transform,
+                Shapes.Empty(inter, "Caja3", new Vector3(9.6f, FL + 0.05f, 19.4f)).transform,
             };
-            g.drop = Shapes.Empty(inter, "DescargaProveedor", new Vector3(13f, 0.05f, 15.7f)).transform;
-            return g;
+            d.drop = Shapes.Empty(inter, "DescargaProveedor", new Vector3(12.4f, 0.05f, 21.5f), new Vector3(0, -90, 0)).transform;
+            return d;
         }
 
-        static SleepBed House()
+        // ------------------------------------------------------------------
+        static SleepBed Rooms()
         {
-            var b = Shapes.Empty(estatico, "Casa", Vector3.zero).transform;
-            Color wall = new Color(0.95f, 0.93f, 0.88f);
-            Shapes.Box(b, "Piso", new Vector3(0, 0, 36), new Vector3(6, 0.03f, 5), new Color(0.6f, 0.45f, 0.35f), true);
-            noGrass.Add(R(-3.2f, 33.3f, 3.2f, 38.7f));
-            float H = 2.8f;
-            WorldParts.Wall(b, "Frente", new Vector3(-3, 0, 33.5f), new Vector3(3, 0, 33.5f), H, 0.15f, wall,
-                new WorldParts.Opening(1.0f, 2.2f, 1.0f, 2.0f, true), new WorldParts.Opening(2.5f, 3.5f, 0, 2.15f), new WorldParts.Opening(4.0f, 5.2f, 1.0f, 2.0f, true));
-            WorldParts.Wall(b, "Fondo", new Vector3(-3, 0, 38.5f), new Vector3(3, 0, 38.5f), H, 0.15f, wall);
-            WorldParts.Wall(b, "Oeste", new Vector3(-3, 0, 33.5f), new Vector3(-3, 0, 38.5f), H, 0.15f, wall);
-            WorldParts.Wall(b, "Este", new Vector3(3, 0, 33.5f), new Vector3(3, 0, 38.5f), H, 0.15f, wall);
-            Color teja = new Color(0.68f, 0.3f, 0.2f);
-            Shapes.BoxC(b, "TechoS", new Vector3(0, H + 0.55f, 34.7f), new Vector3(6.6f, 0.1f, 3.0f), teja, true, new Vector3(-25, 0, 0));
-            Shapes.BoxC(b, "TechoN", new Vector3(0, H + 0.55f, 37.3f), new Vector3(6.6f, 0.1f, 3.0f), teja, true, new Vector3(25, 0, 0));
-            Shapes.Box(b, "MuroTechoO", new Vector3(-3, H, 36), new Vector3(0.15f, 1.1f, 5f), wall, false);
-            Shapes.Box(b, "MuroTechoE", new Vector3(3, H, 36), new Vector3(0.15f, 1.1f, 5f), wall, false);
-            nightLights.Add(WorldParts.RoomLight(b, new Vector3(0, 2.5f, 36), 7f, 1.4f));
-            // mesa y silla
-            Shapes.Box(b, "Mesa", new Vector3(1.6f, 0.72f, 36.5f), new Vector3(1.0f, 0.04f, 0.8f), Mats.Madera, true);
-            Shapes.Box(b, "PataMesa", new Vector3(1.6f, 0, 36.5f), new Vector3(0.1f, 0.72f, 0.1f), Mats.Madera, true);
-            Shapes.Box(b, "Silla", new Vector3(1.6f, 0.42f, 35.8f), new Vector3(0.42f, 0.04f, 0.42f), Mats.Madera, false);
-            // cama
-            var inter = Shapes.Empty(interactivo, "Cama", new Vector3(-2.0f, 0.03f, 37.3f)).transform;
-            Shapes.Box(inter, "Patas", Vector3.zero, new Vector3(1.0f, 0.35f, 2.0f), Mats.Madera, true);
-            Shapes.Box(inter, "Colchon", new Vector3(0, 0.35f, 0), new Vector3(0.95f, 0.15f, 1.95f), new Color(0.9f, 0.9f, 0.85f), true);
-            Shapes.Box(inter, "Frazada", new Vector3(0, 0.5f, -0.3f), new Vector3(0.97f, 0.04f, 1.3f), new Color(0.55f, 0.2f, 0.2f), false);
-            Shapes.Box(inter, "Almohada", new Vector3(0, 0.5f, 0.7f), new Vector3(0.6f, 0.1f, 0.35f), Color.white, false);
-            Shapes.Box(inter, "Respaldo", new Vector3(0, 0, 1.0f), new Vector3(1.0f, 0.95f, 0.06f), Mats.Madera, true);
-            var bed = inter.gameObject.AddComponent<SleepBed>();
-            bed.wakeUpPoint = Shapes.Empty(interactivo, "Despertar", new Vector3(-0.8f, 0.1f, 36.2f), new Vector3(0, 180, 0)).transform;
+            var r = Shapes.Empty(estatico, "Ambientes", Vector3.zero).transform;
+            var inter = Shapes.Empty(interactivo, "Casa", Vector3.zero).transform;
+            float y = FL;
+
+            // Puertas interiores (se abren y cierran con E)
+            W.MakeDoor(inter, "Puerta almacén-comedor", new Vector3(-3.8f, y, 22f), 0, 0.9f, 2.3f, true, 95f);
+            W.MakeDoor(inter, "Puerta del depósito", new Vector3(4f, y, 24.6f), -90, 1.0f, 2.3f, true, -95f);
+            W.MakeDoor(inter, "Puerta de la cocina", new Vector3(-4f, y, 24.6f), -90, 1.0f, 2.3f, true, 95f);
+            W.MakeDoor(inter, "Puerta del dormitorio", new Vector3(-7.4f, y, 22f), 0, 0.9f, 2.3f, true, -95f);
+            W.MakeDoor(inter, "Puerta del baño", new Vector3(-7.6f, y, 26.3f), -90, 0.8f, 2.2f, false, 95f);
+            W.MakeDoor(inter, "Puerta del patio", new Vector3(-0.5f, y, 28f), 0, 1.0f, 2.4f, true, 95f, W.MaderaVerde);
+
+            // --- Comedor ---
+            WorldParts.RoomLight(estatico, new Vector3(0, y + WH - 0.7f, 25f), 8f, 1.5f);
+            Table(r, new Vector3(0.3f, y, 25.2f), 2.0f, 1.0f, 6);
+            W.TBoxB(r, "Aparador", new Vector3(3.55f, y, 26.6f), new Vector3(0.55f, 1.0f, 1.8f), W.Madera);
+            W.TBoxB(r, "Vitrina", new Vector3(3.6f, y + 1.0f, 26.6f), new Vector3(0.4f, 0.9f, 1.6f), TexKit.Mat("madera", new Color(0.8f, 0.7f, 0.6f)));
+            W.TBox(r, "Cuadro", new Vector3(-3.88f, y + 1.8f, 26.5f), new Vector3(0.03f, 0.6f, 0.8f), TexKit.Mat("madera", new Color(0.5f, 0.6f, 0.75f)), 0, false);
+            var clock = Shapes.Cyl(r, "Reloj", new Vector3(0, y + 2.4f, 22.13f), 0.4f, 0.04f, Color.white, false);
+            clock.transform.localEulerAngles = new Vector3(90, 0, 0);
+
+            // --- Cocina ---
+            WorldParts.RoomLight(estatico, new Vector3(-6f, y + WH - 0.7f, 24.5f), 8f, 1.5f);
+            var cocina = Shapes.Empty(inter, "CocinaALeña", new Vector3(-9.3f, y, 23.2f)).transform;
+            Shapes.Box(cocina, "Cuerpo", Vector3.zero, new Vector3(0.75f, 0.85f, 1.3f), new Color(0.1f, 0.1f, 0.1f), true);
+            Shapes.Box(cocina, "Hornalla", new Vector3(0, 0.85f, 0), new Vector3(0.78f, 0.04f, 1.33f), new Color(0.25f, 0.25f, 0.25f), false);
+            Shapes.Box(cocina, "PuertaHorno", new Vector3(0.38f, 0.25f, -0.25f), new Vector3(0.02f, 0.35f, 0.45f), new Color(0.6f, 0.6f, 0.62f), false);
+            Shapes.Cyl(cocina, "Caño", new Vector3(0, 0.85f, 0.4f), 0.15f, 2.6f, new Color(0.15f, 0.15f, 0.15f), false);
+            Shapes.Cyl(cocina, "Olla", new Vector3(0.05f, 0.89f, -0.2f), 0.3f, 0.22f, new Color(0.7f, 0.7f, 0.72f), false);
+            var cd = cocina.gameObject.AddComponent<Decor>();
+            cd.displayName = "Cocina económica a leña"; cd.action = "[E] Atizar el fuego"; cd.message = "Echaste un par de leños. Se siente el calorcito.";
+            // mesada con bacha y alacena
+            W.TBoxB(r, "Mesada", new Vector3(-5.9f, y, 27.55f), new Vector3(3.2f, 0.9f, 0.6f), W.Madera);
+            Shapes.Box(r, "TapaMesada", new Vector3(-5.9f, y + 0.9f, 27.55f), new Vector3(3.25f, 0.04f, 0.62f), new Color(0.85f, 0.85f, 0.82f), false);
+            Shapes.Box(r, "Bacha", new Vector3(-6.6f, y + 0.9f, 27.55f), new Vector3(0.6f, 0.02f, 0.45f), new Color(0.6f, 0.6f, 0.62f), false);
+            Shapes.Cyl(r, "Canilla", new Vector3(-6.6f, y + 0.92f, 27.8f), 0.03f, 0.3f, new Color(0.8f, 0.8f, 0.8f), false);
+            // heladera vieja tipo Siam
+            var hel = Shapes.Empty(inter, "HeladeraVieja", new Vector3(-4.55f, y, 23.0f)).transform;
+            Shapes.Box(hel, "Cuerpo", Vector3.zero, new Vector3(0.65f, 1.6f, 0.65f), new Color(0.93f, 0.93f, 0.9f), true);
+            Shapes.Sphere(hel, "Tapa", new Vector3(0, 1.6f, 0), new Vector3(0.65f, 0.18f, 0.65f), new Color(0.93f, 0.93f, 0.9f));
+            Shapes.Box(hel, "Manija", new Vector3(-0.33f, 1.1f, 0.2f), new Vector3(0.03f, 0.2f, 0.04f), new Color(0.8f, 0.8f, 0.8f), false);
+            var hd = hel.gameObject.AddComponent<Decor>();
+            hd.displayName = "Heladera de la casa"; hd.action = "[E] Abrir"; hd.message = "Hay un poco de soda, manteca y salame. (La mercadería del almacén va en la heladera del local.)";
+            // mesa con pava y mate
+            Table(r, new Vector3(-6.3f, y, 24.6f), 1.4f, 0.8f, 4);
+            var mate = Shapes.Empty(inter, "PavaYMate", new Vector3(-6.3f, y + 0.78f, 24.6f)).transform;
+            Shapes.Cyl(mate, "Pava", new Vector3(0.15f, 0, 0), 0.18f, 0.16f, new Color(0.75f, 0.75f, 0.78f), false);
+            Shapes.Cyl(mate, "TapaPava", new Vector3(0.15f, 0.16f, 0), 0.1f, 0.04f, new Color(0.2f, 0.2f, 0.2f), false);
+            Shapes.CylC(mate, "Pico", new Vector3(0.27f, 0.1f, 0), 0.03f, 0.12f, new Color(0.75f, 0.75f, 0.78f), new Vector3(0, 0, -50));
+            Shapes.Cyl(mate, "Mate", new Vector3(-0.12f, 0, 0.05f), 0.08f, 0.09f, new Color(0.45f, 0.3f, 0.18f), false);
+            Shapes.CylC(mate, "Bombilla", new Vector3(-0.11f, 0.12f, 0.05f), 0.008f, 0.12f, new Color(0.8f, 0.8f, 0.8f), new Vector3(0, 0, 12));
+            var mc = mate.gameObject.AddComponent<BoxCollider>(); mc.center = new Vector3(0, 0.1f, 0); mc.size = new Vector3(0.5f, 0.25f, 0.3f);
+            var md = mate.gameObject.AddComponent<Decor>();
+            md.displayName = "Pava y mate"; md.action = "[E] Cebarse unos mates"; md.message = "¡Qué rico mate! Arrancás el día con todo.";
+            // radio
+            var radio = Shapes.Empty(inter, "Radio", new Vector3(-4.8f, y + 0.94f, 27.6f)).transform;
+            Shapes.Box(radio, "Caja", Vector3.zero, new Vector3(0.35f, 0.22f, 0.15f), new Color(0.5f, 0.3f, 0.18f), true);
+            Shapes.Box(radio, "Dial", new Vector3(0, 0.06f, -0.076f), new Vector3(0.25f, 0.08f, 0.005f), new Color(0.95f, 0.85f, 0.55f), false);
+            var rd = radio.gameObject.AddComponent<Decor>();
+            rd.displayName = "Radio a válvulas"; rd.action = "[E] Prender la radio"; rd.message = "Suena un chamamé... y el pronóstico: \"buen tiempo para la siembra\".";
+
+            // --- Baño ---
+            WorldParts.RoomLight(estatico, new Vector3(-8.8f, y + WH - 0.7f, 26.7f), 4f, 1f);
+            Shapes.Box(r, "Inodoro", new Vector3(-9.6f, y, 26f), new Vector3(0.4f, 0.42f, 0.55f), Color.white, true);
+            Shapes.Box(r, "Mochila", new Vector3(-9.85f, y + 1.6f, 26f), new Vector3(0.2f, 0.4f, 0.45f), Color.white, false);
+            Shapes.Box(r, "Lavatorio", new Vector3(-8.3f, y + 0.8f, 27.75f), new Vector3(0.55f, 0.15f, 0.4f), Color.white, true);
+            Shapes.Box(r, "PieLavatorio", new Vector3(-8.3f, y, 27.75f), new Vector3(0.18f, 0.8f, 0.18f), Color.white, false);
+            Shapes.Box(r, "Bañera", new Vector3(-9.2f, y, 27.3f), new Vector3(1.4f, 0.55f, 0.7f), new Color(0.95f, 0.95f, 0.92f), true);
+            Shapes.Box(r, "Espejo", new Vector3(-8.3f, y + 1.5f, 27.9f), new Vector3(0.5f, 0.6f, 0.02f), new Color(0.75f, 0.85f, 0.9f), false);
+
+            // --- Dormitorio ---
+            WorldParts.RoomLight(estatico, new Vector3(-7f, y + WH - 0.7f, 19f), 8f, 1.4f);
+            var cama = Shapes.Empty(inter, "Cama", new Vector3(-8.95f, y, 18.8f)).transform;
+            Color iron = new Color(0.12f, 0.12f, 0.13f);
+            Shapes.Box(cama, "Base", Vector3.zero, new Vector3(2.0f, 0.4f, 1.45f), new Color(0.3f, 0.3f, 0.32f), true);
+            Shapes.Box(cama, "Colchón", new Vector3(0, 0.4f, 0), new Vector3(1.95f, 0.18f, 1.4f), new Color(0.92f, 0.9f, 0.85f), true);
+            Shapes.Box(cama, "Colcha", new Vector3(0.25f, 0.58f, 0), new Vector3(1.45f, 0.04f, 1.46f), new Color(0.6f, 0.2f, 0.22f), false);
+            Shapes.Box(cama, "Almohadas", new Vector3(-0.75f, 0.58f, 0), new Vector3(0.35f, 0.12f, 1.2f), Color.white, false);
+            for (int i = 0; i < 7; i++) Shapes.Box(cama, "Barrote", new Vector3(-1.0f, 0, -0.6f + i * 0.2f), new Vector3(0.03f, 1.15f, 0.03f), iron, false);
+            Shapes.Box(cama, "Respaldo", new Vector3(-1.0f, 1.1f, 0), new Vector3(0.05f, 0.06f, 1.45f), iron, false);
+            Shapes.Box(cama, "Piecera", new Vector3(1.0f, 0, 0), new Vector3(0.05f, 0.8f, 1.45f), iron, false);
+            var bed = cama.gameObject.AddComponent<SleepBed>();
+            bed.wakeUpPoint = Shapes.Empty(interactivo, "Despertar", new Vector3(-7.2f, y + 0.1f, 18.8f), new Vector3(0, 90, 0)).transform;
+            W.TBoxB(r, "Ropero", new Vector3(-4.45f, y, 20.6f), new Vector3(0.6f, 2.1f, 1.6f), W.Madera);
+            Shapes.Box(r, "EspejoRopero", new Vector3(-4.76f, y + 0.6f, 20.6f), new Vector3(0.01f, 1.2f, 0.5f), new Color(0.75f, 0.85f, 0.9f), false);
+            W.TBoxB(r, "MesaDeLuz", new Vector3(-9.6f, y, 17.6f), new Vector3(0.45f, 0.6f, 0.45f), W.Madera);
+            var vel = Shapes.Empty(inter, "Velador", new Vector3(-9.6f, y + 0.6f, 17.6f)).transform;
+            Shapes.Cyl(vel, "Pie", Vector3.zero, 0.08f, 0.25f, new Color(0.7f, 0.6f, 0.3f), false);
+            Shapes.Cone(vel, "Pantalla", new Vector3(0, 0.22f, 0), 0.25f, 0.2f, new Color(0.95f, 0.88f, 0.7f));
+            var vl = WorldParts.PointLight(vel, new Vector3(0, 0.3f, 0), 3.5f, 0.8f, new Color(1f, 0.85f, 0.6f));
+            var vc = vel.gameObject.AddComponent<BoxCollider>(); vc.center = new Vector3(0, 0.2f, 0); vc.size = new Vector3(0.3f, 0.45f, 0.3f);
+            var vd = vel.gameObject.AddComponent<Decor>();
+            vd.displayName = "Velador"; vd.action = "[E] Prender / apagar"; vd.toggleLight = vl; vd.sound = "key";
+            W.TBoxB(r, "Baúl", new Vector3(-7.5f, y, 16.6f), new Vector3(0.9f, 0.5f, 0.5f), TexKit.Mat("madera", new Color(0.7f, 0.55f, 0.45f)));
+            Shapes.Cyl(r, "Alfombra", new Vector3(-7.2f, y + 0.005f, 19f), 1.8f, 0.01f, new Color(0.55f, 0.35f, 0.3f), false);
             return bed;
         }
 
-        static Transform[] Garden()
+        static void Table(Transform p, Vector3 pos, float w, float d, int chairs)
         {
-            var h = Shapes.Empty(interactivo, "Huerta", Vector3.zero).transform;
-            Flat("TierraHuerta", -33.6f, 14.4f, -13.4f, 36.6f, new Color(0.5f, 0.42f, 0.3f), 0.015f);
-            Vector3[] open = { new Vector3(-29, 0.015f, 19), new Vector3(-25, 0.015f, 19), new Vector3(-21, 0.015f, 19), new Vector3(-29, 0.015f, 25.5f), new Vector3(-25, 0.015f, 25.5f), new Vector3(-21, 0.015f, 25.5f) };
-            Vector3[] locked = { new Vector3(-17, 0.015f, 19), new Vector3(-17, 0.015f, 25.5f), new Vector3(-29, 0.015f, 32), new Vector3(-25, 0.015f, 32), new Vector3(-21, 0.015f, 32), new Vector3(-17, 0.015f, 32) };
-            int n = 1;
-            foreach (var p in open) Bed(h, p, n++, false);
-            foreach (var p in locked) Bed(h, p, n++, true);
-            WorldParts.Sign(estatico, new Vector3(-13.2f, 0, 25.0f), 90, "HUERTA", new Vector2(1.2f, 0.4f));
+            var t = Shapes.Empty(p, "Mesa", pos).transform;
+            W.TBoxB(t, "Tapa", new Vector3(0, 0.74f, 0), new Vector3(w, 0.05f, d), W.Madera);
+            foreach (var c in new[] { new Vector3(-1, 0, -1), new Vector3(1, 0, -1), new Vector3(-1, 0, 1), new Vector3(1, 0, 1) })
+                W.TBoxB(t, "Pata", new Vector3(c.x * (w / 2 - 0.06f), 0, c.z * (d / 2 - 0.06f)), new Vector3(0.06f, 0.74f, 0.06f), W.Madera, 0, false);
+            for (int i = 0; i < chairs; i++)
+            {
+                float side = i % 2 == 0 ? -1 : 1;
+                float x = chairs <= 2 ? 0 : Mathf.Lerp(-w / 2 + 0.35f, w / 2 - 0.35f, (i / 2) / Mathf.Max(1f, chairs / 2 - 1));
+                var ch = Shapes.Empty(t, "Silla", new Vector3(x, 0, side * (d / 2 + 0.3f))).transform;
+                W.TBoxB(ch, "Asiento", new Vector3(0, 0.44f, 0), new Vector3(0.42f, 0.04f, 0.42f), W.Madera, 0, false);
+                W.TBoxB(ch, "Respaldo", new Vector3(0, 0.48f, side * 0.2f), new Vector3(0.42f, 0.5f, 0.03f), W.Madera, 0, false);
+                foreach (var c in new[] { new Vector3(-1, 0, -1), new Vector3(1, 0, -1), new Vector3(-1, 0, 1), new Vector3(1, 0, 1) })
+                    W.TBoxB(ch, "Pata", new Vector3(c.x * 0.18f, 0, c.z * 0.18f), new Vector3(0.03f, 0.44f, 0.03f), W.Madera, 0, false);
+            }
+            var col = t.gameObject.AddComponent<BoxCollider>();
+            col.center = new Vector3(0, 0.4f, 0);
+            col.size = new Vector3(w, 0.8f, d);
+        }
+
+        // ------------------------------------------------------------------
+        static void Patio()
+        {
+            var p = Shapes.Empty(estatico, "Patio", Vector3.zero).transform;
+            W.Aljibe(interactivo, new Vector3(-6.5f, 0, 33f));
+            // parral sobre el patio, junto a la puerta de atrás
+            for (float x = -3f; x <= 3.1f; x += 3f)
+                foreach (float z in new[] { 29f, 32f })
+                    W.TBoxB(p, "PostePArral", new Vector3(x, 0, z), new Vector3(0.12f, 2.6f, 0.12f), W.Madera);
+            for (int i = 0; i < 6; i++)
+                Shapes.Beam(p, "Alambre", new Vector3(-3, 2.6f, 29 + i * 0.6f), new Vector3(3, 2.6f, 29 + i * 0.6f), 0.02f, new Color(0.4f, 0.4f, 0.4f));
+            var leaves = new MeshKit.Builder(1);
+            var r = new System.Random(5);
+            for (int i = 0; i < 14; i++)
+                MeshKit.AddBlob(leaves, 0, new Vector3(-2.6f + (i % 7) * 0.9f, 2.75f, 29.4f + (i / 7) * 2f), new Vector3(1.4f, 0.4f, 1.8f), r.Next(), 0.3f);
+            MeshKit.Object(p, "Parra", MeshKit.Persist("parra", () => leaves.Build()), new[] { Mats.Get(new Color(0.3f, 0.5f, 0.2f), 0.2f) }, Vector3.zero);
+            // tendedero con ropa
+            Shapes.Beam(p, "Tendedero", new Vector3(5, 1.8f, 31), new Vector3(10, 1.8f, 33), 0.015f, new Color(0.3f, 0.3f, 0.3f));
+            W.TBoxB(p, "PosteTend", new Vector3(5, 0, 31), new Vector3(0.08f, 1.9f, 0.08f), W.Madera);
+            W.TBoxB(p, "PosteTend", new Vector3(10, 0, 33), new Vector3(0.08f, 1.9f, 0.08f), W.Madera);
+            Color[] ropa = { Color.white, new Color(0.3f, 0.45f, 0.75f), new Color(0.8f, 0.3f, 0.3f), new Color(0.9f, 0.85f, 0.6f) };
+            for (int i = 0; i < 5; i++)
+            {
+                var a = Vector3.Lerp(new Vector3(5, 1.8f, 31), new Vector3(10, 1.8f, 33), 0.15f + i * 0.17f);
+                Shapes.BoxC(p, "Ropa", a - Vector3.up * 0.3f, new Vector3(0.5f, 0.6f, 0.01f), ropa[i % 4], false, new Vector3(0, -22, 0));
+            }
+            // leña apilada
+            for (int i = 0; i < 12; i++)
+                Shapes.CylC(p, "Leño", new Vector3(-9f + (i % 4) * 0.25f, 0.12f + (i / 4) * 0.22f, 29.3f), 0.2f, 1.0f, new Color(0.45f, 0.32f, 0.2f), new Vector3(90, 0, 0));
+        }
+
+        // ------------------------------------------------------------------
+        static Transform[] Farmland()
+        {
+            var f = Shapes.Empty(interactivo, "Terrenos", Vector3.zero).transform;
+            noGrass.Add(R(-46.6f, 14.4f, -14.4f, 46.6f));
+            Plot(f, "lote_1", "Lote 1", new Vector3(-22f, 0, 23f), new Vector2(14, 16), true, 0);
+            Plot(f, "lote_2", "Lote 2", new Vector3(-22f, 0, 39f), new Vector2(14, 14), false, 35000);
+            Plot(f, "lote_3", "Lote 3", new Vector3(-38f, 0, 30.5f), new Vector2(16, 30), false, 60000);
+            W.Sign(estatico, new Vector3(-14.2f, 0, 25.2f), 90, "TERRENOS DE SIEMBRA", new Vector2(1.8f, 0.4f));
             return new[]
             {
-                Shapes.Empty(interactivo, "Cajon1", new Vector3(-14.6f, 0.05f, 19.6f), new Vector3(0, 90, 0)).transform,
-                Shapes.Empty(interactivo, "Cajon2", new Vector3(-14.6f, 0.05f, 20.3f), new Vector3(0, 90, 0)).transform,
-                Shapes.Empty(interactivo, "Cajon3", new Vector3(-14.6f, 0.05f, 21.0f), new Vector3(0, 90, 0)).transform,
+                Shapes.Empty(interactivo, "Cajon1", new Vector3(-15.8f, 0.08f, 19.6f), new Vector3(0, 90, 0)).transform,
+                Shapes.Empty(interactivo, "Cajon2", new Vector3(-15.8f, 0.08f, 20.3f), new Vector3(0, 90, 0)).transform,
+                Shapes.Empty(interactivo, "Cajon3", new Vector3(-15.8f, 0.08f, 21.0f), new Vector3(0, 90, 0)).transform,
             };
         }
 
-        static void Bed(Transform parent, Vector3 pos, int n, bool locked)
+        static void Plot(Transform parent, string id, string name, Vector3 center, Vector2 size, bool owned, int price)
         {
-            var go = Shapes.Empty(parent, "Cantero_" + n, pos);
-            var bed = go.AddComponent<GardenBed>();
-            bed.bedId = "cantero_" + n;
-            bed.displayName = "Cantero " + n;
-            bed.locked = locked;
-            bed.unlockPrice = 20000;
-            bed.Build();
+            var go = Shapes.Empty(parent, name, center);
+            var lp = go.AddComponent<LandPlot>();
+            lp.plotId = id; lp.displayName = name; lp.size = size; lp.owned = owned; lp.price = price;
+            var ground = MeshKit.Object(go.transform, "Suelo", MeshKit.Box(new Vector3(size.x - 0.2f, 0.012f, size.y - 0.2f)),
+                new[] { owned ? TexKit.Mat("tierra", new Color(0.95f, 0.9f, 0.85f)) : TexKit.Mat("pasto", Color.white) }, Vector3.zero);
+            lp.ground = ground.GetComponent<Renderer>();
+            // estacas de esquina (blanqueadas a la cal)
+            foreach (var c in new[] { new Vector2(-1, -1), new Vector2(1, -1), new Vector2(-1, 1), new Vector2(1, 1) })
+                W.TBoxB(go.transform, "Estaca", new Vector3(c.x * (size.x / 2 - 0.2f), 0, c.y * (size.y / 2 - 0.2f)), new Vector3(0.08f, 0.6f, 0.08f), W.Revoque, 0, false);
+            var sale = Shapes.Empty(go.transform, "EnVenta", Vector3.zero);
+            if (!owned)
+                W.Sign(sale.transform, new Vector3(0, 0, -size.y / 2 + 0.6f), 180, name.ToUpper() + "\nEN VENTA " + Money.Fmt(price) + "\n(computadora → Mejoras)", new Vector2(2.2f, 0.9f));
+            lp.forSaleVisual = sale;
+            W.Sign(go.transform, new Vector3(size.x / 2 - 1.2f, 0, -size.y / 2 + 0.4f), 180, name.ToUpper(), new Vector2(0.9f, 0.3f));
         }
 
-        static void Well()
+        // ------------------------------------------------------------------
+        static Transform BackField()
         {
-            var w = Shapes.Empty(interactivo, "Pozo", new Vector3(-10.5f, 0, 26.6f)).transform;
-            noGrass.Add(R(-11.6f, 25.5f, -9.4f, 27.7f));
-            Color stone = new Color(0.62f, 0.6f, 0.56f);
-            var ring = Shapes.Cyl(w, "Brocal", Vector3.zero, 1.3f, 0.8f, stone, true);
-            ring.name = "Brocal";
-            Shapes.Cyl(w, "BordeBrocal", new Vector3(0, 0.8f, 0), 1.4f, 0.08f, new Color(0.55f, 0.53f, 0.5f), false);
-            Shapes.Cyl(w, "Agua", new Vector3(0, 0.81f, 0), 1.0f, 0.01f, new Color(0.08f, 0.12f, 0.18f), false);
-            Shapes.Box(w, "PosteI", new Vector3(-0.7f, 0, 0), new Vector3(0.12f, 2.1f, 0.12f), Mats.Madera, true);
-            Shapes.Box(w, "PosteD", new Vector3(0.7f, 0, 0), new Vector3(0.12f, 2.1f, 0.12f), Mats.Madera, true);
-            Shapes.CylC(w, "Rodillo", new Vector3(0, 1.85f, 0), 0.14f, 1.4f, Mats.MaderaClara, new Vector3(0, 0, 90));
-            Shapes.Beam(w, "Manivela", new Vector3(0.75f, 1.85f, 0), new Vector3(0.95f, 1.75f, 0.05f), 0.04f, new Color(0.3f, 0.3f, 0.3f));
-            Shapes.BoxC(w, "TechitoA", new Vector3(0, 2.25f, -0.35f), new Vector3(1.7f, 0.04f, 0.9f), Mats.MaderaGris, false, new Vector3(30, 0, 0));
-            Shapes.BoxC(w, "TechitoB", new Vector3(0, 2.25f, 0.35f), new Vector3(1.7f, 0.04f, 0.9f), Mats.MaderaGris, false, new Vector3(-30, 0, 0));
-            var bucket = Shapes.Empty(w, "BaldeDelPozo", new Vector3(0, 1.1f, 0)).transform;
-            Shapes.Cyl(bucket, "Balde", Vector3.zero, 0.26f, 0.28f, Mats.Chapa, false);
-            Shapes.CylC(bucket, "Soga", new Vector3(0, 0.55f, 0), 0.02f, 0.6f, new Color(0.75f, 0.65f, 0.45f), Vector3.zero);
-            var ws = w.gameObject.AddComponent<WaterSource>();
-            ws.displayName = "Pozo de agua";
-            ws.wellBucket = bucket;
-            ws.bucketDrop = 1.0f;
+            var b = Shapes.Empty(estatico, "Campo de atrás", Vector3.zero).transform;
+            // Tranquera de entrada al camino de tierra
+            var gate = Shapes.Empty(interactivo, "Tranquera", new Vector3(16f, 0, 6.2f)).transform;
+            var wood = TexKit.Mat("madera", new Color(0.8f, 0.78f, 0.72f));
+            W.TBoxB(gate, "PosteI", new Vector3(0, 0, 0), new Vector3(0.3f, 1.9f, 0.3f), W.Madera);
+            W.TBoxB(gate, "PosteD", new Vector3(4, 0, 0), new Vector3(0.3f, 1.9f, 0.3f), W.Madera);
+            var leaf = Shapes.Empty(gate, "Hoja", new Vector3(0.18f, 0, 0)).transform;
+            for (int i = 0; i < 5; i++)
+                W.TBoxB(leaf, "Travesaño", new Vector3(1.85f, 0.2f + i * 0.28f, 0), new Vector3(3.7f, 0.1f, 0.06f), wood, 0, false);
+            W.TBoxB(leaf, "Vertical", new Vector3(0.05f, 0.15f, 0), new Vector3(0.1f, 1.3f, 0.08f), wood, 0, false);
+            W.TBoxB(leaf, "Vertical", new Vector3(3.65f, 0.15f, 0), new Vector3(0.1f, 1.3f, 0.08f), wood, 0, false);
+            Shapes.Beam(leaf, "Diagonal", new Vector3(0.1f, 0.25f, 0.04f), new Vector3(3.6f, 1.35f, 0.04f), 0.09f, new Color(0.7f, 0.68f, 0.62f));
+            var col = leaf.gameObject.AddComponent<BoxCollider>();
+            col.center = new Vector3(1.85f, 0.8f, 0); col.size = new Vector3(3.7f, 1.4f, 0.12f);
+            var fg = gate.gameObject.AddComponent<FarmGate>();
+            fg.leaf = leaf; fg.openAngle = -95f; fg.startOpen = true;
+            WorldLabel.Create(gate, "LA TRANQUERA", new Vector3(2, 2.2f, 0), new Vector2(3.6f, 0.4f), 260, new Color(0.3f, 0.18f, 0.08f), Vector3.back, new Color(0.9f, 0.85f, 0.7f));
+            W.TBoxB(gate, "Arco", new Vector3(2, 1.9f, 0), new Vector3(4.3f, 0.12f, 0.15f), W.Madera, 0, false);
+            W.TBoxB(gate, "ArcoI", new Vector3(0, 1.9f, 0), new Vector3(0.12f, 0.55f, 0.12f), W.Madera, 0, false);
+            W.TBoxB(gate, "ArcoD", new Vector3(4, 1.9f, 0), new Vector3(0.12f, 0.55f, 0.12f), W.Madera, 0, false);
+
+            // Galpón grande del tambo y la fábrica de dulce de leche (se habilita en la Fase 4)
+            var t = Shapes.Empty(b, "Galpon del tambo", new Vector3(20, 0, 63)).transform;
+            noGrass.Add(R(9.5f, 55.5f, 30.5f, 70.5f));
+            W.TBoxB(t, "Contrapiso", Vector3.zero, new Vector3(20, 0.1f, 14), W.Cemento);
+            W.Wall(t, "Pared", new Vector3(10, 0, -7), new Vector3(-10, 0, -7), 4.5f, 0.25f, W.Ladrillo, false, new W.Opening(7f, 13f, 0, 4.0f));
+            W.Wall(t, "Pared", new Vector3(-10, 0, 7), new Vector3(10, 0, 7), 4.5f, 0.25f, W.Ladrillo, false);
+            W.Wall(t, "Pared", new Vector3(-10, 0, -7), new Vector3(-10, 0, 7), 4.5f, 0.25f, W.Ladrillo, false, new W.Opening(3, 5, 1.5f, 3f, true), new W.Opening(9, 11, 1.5f, 3f, true));
+            W.Wall(t, "Pared", new Vector3(10, 0, 7), new Vector3(10, 0, -7), 4.5f, 0.25f, W.Ladrillo, false, new W.Opening(3, 5, 1.5f, 3f, true), new W.Opening(9, 11, 1.5f, 3f, true));
+            var roof = MeshKit.Object(t, "Techo curvo", MeshKit.CurvedRoof(20.8f, 3.2f, 14.8f), new[] { W.ChapaMat }, new Vector3(0, 4.5f, 0));
+            roof.transform.localRotation = Quaternion.identity;
+            foreach (float z in new[] { -7f, 7f })
+            {
+                var arch = new List<Vector2>();
+                for (int i = 0; i <= 16; i++) { float k = i / 16f; arch.Add(new Vector2(Mathf.Lerp(-10, 10, k), 4.5f + 3.2f * (1 - Mathf.Pow(2 * k - 1, 2)))); }
+                var bb = new MeshKit.Builder(1);
+                MeshKit.AddExtrusion(bb, 0, ArchCCW(arch), 0.25f);
+                var gable = MeshKit.Object(t, "Frontis", MeshKit.Persist("frontisTambo", () => bb.Build()), new[] { W.Revoque }, new Vector3(0, 0, z));
+                gable.transform.localRotation = Quaternion.Euler(0, 90, 0);
+            }
+            // portón cerrado con cartel
+            W.TBoxB(t, "Porton", new Vector3(0, 0, -7.05f), new Vector3(6f, 4.0f, 0.12f), TexKit.Mat("madera", new Color(0.6f, 0.45f, 0.35f)));
+            WorldLabel.Create(t, "TAMBO · FÁBRICA DE DULCE DE LECHE", new Vector3(0, 5.2f, -7.3f), new Vector2(12f, 0.7f), 450, new Color(0.35f, 0.15f, 0.08f), Vector3.back);
+            WorldLabel.Create(t, "Se habilita en la Fase 4", new Vector3(0, 2.2f, -7.15f), new Vector2(5f, 0.4f), 200, Color.white, Vector3.back, new Color(0, 0, 0, 0.5f));
+
+            // Molino y tanque australiano junto a los corrales
+            W.Molino(b, new Vector3(36, 0, 46));
+            W.TanqueAustraliano(b, new Vector3(36, 0, 39), 6.5f);
+            Shapes.Box(b, "Bebedero", new Vector3(31, 0, 39), new Vector3(3.5f, 0.6f, 0.7f), new Color(0.55f, 0.57f, 0.6f), true);
+            W.Sign(b, new Vector3(26, 0, 28.6f), 180, "CORRALES\n(se habilitan en la Fase 2)", new Vector2(2.2f, 0.8f));
+            return gate;
+        }
+
+        /// <summary>Asegura sentido antihorario para la silueta del frontis.</summary>
+        static List<Vector2> ArchCCW(List<Vector2> pts)
+        {
+            float area = 0;
+            for (int i = 0; i < pts.Count; i++) { var p = pts[i]; var q = pts[(i + 1) % pts.Count]; area += p.x * q.y - q.x * p.y; }
+            if (area < 0) pts.Reverse();
+            return pts;
         }
 
         static void Fences()
         {
             var f = Shapes.Empty(estatico, "Alambrados", Vector3.zero).transform;
-            // Perímetro del campo
-            WorldParts.Fence(f, new Vector3(-42, 0, 6), new Vector3(-42, 0, 58));
-            WorldParts.Fence(f, new Vector3(44, 0, 6), new Vector3(44, 0, 58));
-            WorldParts.Fence(f, new Vector3(-42, 0, 58), new Vector3(44, 0, 58));
-            WorldParts.Fence(f, new Vector3(-42, 0, 6), new Vector3(-12, 0, 6));
-            WorldParts.Fence(f, new Vector3(17, 0, 6), new Vector3(25, 0, 6));
-            WorldParts.Fence(f, new Vector3(29, 0, 6), new Vector3(44, 0, 6));
-            // Huerta (con entrada del lado este)
-            WorldParts.Fence(f, new Vector3(-34, 0, 14), new Vector3(-13, 0, 14), 2.5f);
-            WorldParts.Fence(f, new Vector3(-34, 0, 37), new Vector3(-13, 0, 37), 2.5f);
-            WorldParts.Fence(f, new Vector3(-34, 0, 14), new Vector3(-34, 0, 37), 2.5f);
-            WorldParts.Fence(f, new Vector3(-13, 0, 14), new Vector3(-13, 0, 21.5f), 2.5f);
-            WorldParts.Fence(f, new Vector3(-13, 0, 23.6f), new Vector3(-13, 0, 37), 2.5f);
-            // Zona de corrales todavía cerrada (fase 2)
-            WorldParts.Fence(f, new Vector3(20, 0, 28), new Vector3(42, 0, 28));
-            WorldParts.Fence(f, new Vector3(20, 0, 54), new Vector3(42, 0, 54));
-            WorldParts.Fence(f, new Vector3(20, 0, 28), new Vector3(20, 0, 54));
-            WorldParts.Fence(f, new Vector3(42, 0, 28), new Vector3(42, 0, 54));
-            WorldParts.Sign(f, new Vector3(27, 0, 27.6f), 180, "CORRALES\n(se habilitan en la Fase 2)", new Vector2(2.2f, 0.8f));
-
-            // Tranquera de entrada al campo
-            var gate = Shapes.Empty(interactivo, "Tranquera", new Vector3(25, 0, 6)).transform;
-            Color wood = new Color(0.6f, 0.57f, 0.5f);
-            Shapes.Box(gate, "PosteI", new Vector3(0, 0, 0), new Vector3(0.28f, 1.8f, 0.28f), Mats.Madera, true);
-            Shapes.Box(gate, "PosteD", new Vector3(4, 0, 0), new Vector3(0.28f, 1.8f, 0.28f), Mats.Madera, true);
-            var leaf = Shapes.Empty(gate, "Hoja", new Vector3(0.18f, 0, 0)).transform;
-            for (int i = 0; i < 5; i++)
-                Shapes.Box(leaf, "Travesano", new Vector3(1.85f, 0.25f + i * 0.28f, 0), new Vector3(3.7f, 0.1f, 0.06f), wood, i == 0 || i == 4);
-            Shapes.Box(leaf, "Vertical", new Vector3(0.05f, 0.2f, 0), new Vector3(0.1f, 1.3f, 0.08f), wood, false);
-            Shapes.Box(leaf, "Vertical", new Vector3(3.65f, 0.2f, 0), new Vector3(0.1f, 1.3f, 0.08f), wood, false);
-            Shapes.Beam(leaf, "Diagonal", new Vector3(0.1f, 0.3f, 0.04f), new Vector3(3.6f, 1.4f, 0.04f), 0.09f, wood);
-            var col = leaf.gameObject.AddComponent<BoxCollider>();
-            col.center = new Vector3(1.85f, 0.8f, 0);
-            col.size = new Vector3(3.7f, 1.4f, 0.12f);
-            var fg = gate.gameObject.AddComponent<FarmGate>();
-            fg.leaf = leaf;
-            fg.openAngle = -95f;
+            // Perímetro del campo (abierto frente al almacén y en la tranquera)
+            W.Fence(f, new Vector3(-56, 0, 6), new Vector3(-56, 0, 82));
+            W.Fence(f, new Vector3(46, 0, 6), new Vector3(46, 0, 82));
+            W.Fence(f, new Vector3(-56, 0, 82), new Vector3(46, 0, 82));
+            W.Fence(f, new Vector3(-56, 0, 6), new Vector3(-11, 0, 6));
+            W.Fence(f, new Vector3(15, 0, 6), new Vector3(16, 0, 6), 1f);
+            W.Fence(f, new Vector3(20.2f, 0, 6), new Vector3(46, 0, 6));
+            // Terrenos de siembra (entrada del lado este, frente a la casa)
+            W.Fence(f, new Vector3(-46.5f, 0, 14.5f), new Vector3(-14.5f, 0, 14.5f), 2.5f);
+            W.Fence(f, new Vector3(-46.5f, 0, 46.5f), new Vector3(-14.5f, 0, 46.5f), 2.5f);
+            W.Fence(f, new Vector3(-46.5f, 0, 14.5f), new Vector3(-46.5f, 0, 46.5f), 2.5f);
+            W.Fence(f, new Vector3(-14.5f, 0, 14.5f), new Vector3(-14.5f, 0, 18.5f), 2.5f);
+            W.Fence(f, new Vector3(-14.5f, 0, 23.5f), new Vector3(-14.5f, 0, 46.5f), 2.5f);
+            // Corrales (cerrados hasta la fase 2)
+            W.Fence(f, new Vector3(24, 0, 29), new Vector3(42, 0, 29));
+            W.Fence(f, new Vector3(24, 0, 50), new Vector3(42, 0, 50));
+            W.Fence(f, new Vector3(24, 0, 29), new Vector3(24, 0, 50));
+            W.Fence(f, new Vector3(42, 0, 29), new Vector3(42, 0, 50));
         }
 
         static void Trees()
         {
             var t = Shapes.Empty(estatico, "Arboles", Vector3.zero).transform;
-            // Cortina de eucaliptos al fondo
-            for (float x = -52; x <= 54; x += 6.5f) WorldParts.Eucalyptus(t, new Vector3(x + (float)(rnd.NextDouble() * 2 - 1), 0, 63 + (float)(rnd.NextDouble() * 3)), rnd);
-            // Fila de álamos al oeste
-            for (float z = 10; z <= 60; z += 5f) WorldParts.Poplar(t, new Vector3(-47 + (float)(rnd.NextDouble()), 0, z), rnd);
-            // Álamos junto al camino de los corrales
-            for (float z = 9; z <= 25; z += 5f) WorldParts.Poplar(t, new Vector3(30, 0, z), rnd);
+            int v = 0;
+            // Cortina de eucaliptos al fondo y al oeste
+            for (float x = -60; x <= 52; x += 6.5f) NatureKit.Place(NatureKit.Tree.Eucalipto, t, new Vector3(x + Rf * 2, 0, 86 + Rf * 3), v++, Rf * 360, 0.9f + Rf * 0.3f);
+            for (float z = 12; z <= 80; z += 7f) NatureKit.Place(NatureKit.Tree.Eucalipto, t, new Vector3(-61 + Rf * 2, 0, z), v++, Rf * 360, 0.9f + Rf * 0.3f);
+            // Álamos a lo largo del camino de tierra
+            for (float z = 10; z <= 52; z += 5.5f) NatureKit.Place(NatureKit.Tree.Alamo, t, new Vector3(23.6f, 0, z), v++, Rf * 360, 0.9f + Rf * 0.2f);
             // Paraísos dando sombra
-            WorldParts.Paraiso(t, new Vector3(-9, 0, 9.5f), rnd);
-            WorldParts.Paraiso(t, new Vector3(8.5f, 0, 27), rnd);
-            WorldParts.Paraiso(t, new Vector3(-6, 0, 31), rnd);
-            WorldParts.Paraiso(t, new Vector3(5.5f, 0, 41), rnd);
-            // Montecito del otro lado de la ruta
-            for (int i = 0; i < 14; i++)
-                WorldParts.Eucalyptus(t, new Vector3(-150 + (float)rnd.NextDouble() * 30, 0, -12 - (float)rnd.NextDouble() * 25), rnd);
-            for (int i = 0; i < 10; i++)
-                WorldParts.Eucalyptus(t, new Vector3(130 + (float)rnd.NextDouble() * 25, 0, -15 - (float)rnd.NextDouble() * 30), rnd);
-            for (int i = 0; i < 8; i++)
-                WorldParts.Paraiso(t, new Vector3((float)(rnd.NextDouble() * 160 - 80), 0, -96 - (float)rnd.NextDouble() * 10), rnd);
+            NatureKit.Place(NatureKit.Tree.Paraiso, t, new Vector3(-8, 0, 9), v++, 20);
+            NatureKit.Place(NatureKit.Tree.Paraiso, t, new Vector3(11.5f, 0, 9.5f), v++, 140);
+            NatureKit.Place(NatureKit.Tree.Paraiso, t, new Vector3(7, 0, 35), v++, 80);
+            NatureKit.Place(NatureKit.Tree.Paraiso, t, new Vector3(-8.5f, 0, 35.5f), v++, 200);
+            NatureKit.Place(NatureKit.Tree.Paraiso, t, new Vector3(-12, 0, 48), v++, 300);
+            // Arbustos sueltos
+            for (int i = 0; i < 25; i++)
+            {
+                var p = new Vector3(-55 + Rf * 100, 0, 48 + Rf * 30);
+                if (p.x > 8 && p.x < 32 && p.z < 72) continue;
+                NatureKit.Place(NatureKit.Tree.Arbusto, t, p, v++, Rf * 360, 0.7f + Rf * 0.6f);
+            }
+            // Montecitos del otro lado de la ruta
+            for (int i = 0; i < 14; i++) NatureKit.Place(NatureKit.Tree.Eucalipto, t, new Vector3(-150 + Rf * 30, 0, -12 - Rf * 25), v++, Rf * 360);
+            for (int i = 0; i < 10; i++) NatureKit.Place(NatureKit.Tree.Eucalipto, t, new Vector3(130 + Rf * 25, 0, -15 - Rf * 30), v++, Rf * 360);
+            for (int i = 0; i < 8; i++) NatureKit.Place(NatureKit.Tree.Paraiso, t, new Vector3(Rf * 160 - 80, 0, -96 - Rf * 10), v++, Rf * 360);
         }
 
         static void Hills()
@@ -599,23 +826,43 @@ namespace LaTranquera.EditorTools
             go.AddComponent<HillsBackdrop>();
         }
 
+        static Material GrassMat(string name, Color baseC, Color tip)
+        {
+            string path = Mats.Folder + "/" + name + ".mat";
+            var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            var sh = Shader.Find("LaTranquera/Pasto");
+            if (m == null)
+            {
+                m = sh != null ? new Material(sh) : new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                AssetDatabase.CreateAsset(m, path);
+            }
+            if (sh != null && m.shader != sh) m.shader = sh;
+            m.SetColor("_ColorBase", baseC);
+            m.SetColor("_ColorTip", tip);
+            m.SetColor("_BaseColor", tip);
+            m.enableInstancing = true;
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
         static void Grass()
         {
             var go = new GameObject("Pasto");
             var gf = go.AddComponent<GrassField>();
+            gf.areaMin = new Vector2(-95, -40);
+            gf.areaMax = new Vector2(95, 95);
             gf.materials = new[]
             {
-                Mats.Get("Pasto1", new Color(0.33f, 0.55f, 0.2f), 0.1f, 0f, false, null, true, true),
-                Mats.Get("Pasto2", new Color(0.4f, 0.6f, 0.24f), 0.1f, 0f, false, null, true, true),
-                Mats.Get("Pasto3", new Color(0.28f, 0.48f, 0.18f), 0.1f, 0f, false, null, true, true),
-                Mats.Get("PastoSeco", new Color(0.7f, 0.65f, 0.38f), 0.1f, 0f, false, null, true, true),
+                GrassMat("Pasto1", new Color(0.2f, 0.33f, 0.11f), new Color(0.48f, 0.62f, 0.25f)),
+                GrassMat("Pasto2", new Color(0.22f, 0.36f, 0.12f), new Color(0.56f, 0.68f, 0.3f)),
+                GrassMat("Pasto3", new Color(0.18f, 0.3f, 0.1f), new Color(0.42f, 0.56f, 0.22f)),
+                GrassMat("PastoSeco", new Color(0.4f, 0.38f, 0.2f), new Color(0.78f, 0.72f, 0.45f)),
             };
             gf.exclusions = new List<Rect>(noGrass);
-            gf.exclusions.Add(R(-4.4f, 14.2f, 4.4f, 16.1f));
         }
 
         // ------------------------------------------------------------------
-        static void Systems(StoreRefs store, GalponRefs galpon, SleepBed bed, Transform[] crateSpots)
+        static void Systems(StoreRefs store, DepRefs dep, SleepBed bed, Transform[] crateSpots)
         {
             var sys = new GameObject("_Sistemas");
             var gm = sys.AddComponent<GameManager>();
@@ -628,29 +875,28 @@ namespace LaTranquera.EditorTools
             sys.AddComponent<HUD>();
             sys.AddComponent<ComputerUI>();
             var ng = sys.AddComponent<NewGameSetup>();
-            ng.hoeHook = galpon.hoe; ng.canHook = galpon.can; ng.bucketHook = galpon.bucket; ng.labelerHook = store.labelerHook;
+            ng.hoeHook = dep.hoe; ng.canHook = dep.can; ng.bucketHook = dep.bucket; ng.labelerHook = store.labelerHook;
             ng.crateSpots = crateSpots;
-            ng.seedSpots = galpon.seedSpots;
-            ng.boxSpots = galpon.boxSpots;
+            ng.seedSpots = dep.seedSpots;
+            ng.boxSpots = dep.boxSpots;
             gm.newGameSetup = ng;
             gm.bed = bed;
 
-            dm.dropPoint = galpon.drop;
+            Transform Pt(Transform parent, string n, float x, float z) => Shapes.Empty(parent, n, new Vector3(x, 0.03f, z)).transform;
+
+            // Camioneta del proveedor: entra por la tranquera, descarga en el portón del depósito, da la vuelta y sale
+            dm.dropPoint = dep.drop;
             var route = Shapes.Empty(sys.transform, "RutaCamioneta", Vector3.zero).transform;
-            dm.truckRoute = new[]
-            {
-                Shapes.Empty(route, "Entrada0", new Vector3(230, 0, 1.8f)).transform,
-                Shapes.Empty(route, "Entrada1", new Vector3(24, 0, 1.8f)).transform,
-                Shapes.Empty(route, "Entrada2", new Vector3(15, 0, 6.5f)).transform,
-                Shapes.Empty(route, "Entrada3", new Vector3(13, 0, 12.6f)).transform,
-            };
-            dm.truckExit = new[]
-            {
-                Shapes.Empty(route, "Salida0", new Vector3(9, 0, 11.5f)).transform,
-                Shapes.Empty(route, "Salida1", new Vector3(2, 0, 7f)).transform,
-                Shapes.Empty(route, "Salida2", new Vector3(-12, 0, 1.8f)).transform,
-                Shapes.Empty(route, "Salida3", new Vector3(-230, 0, 1.8f)).transform,
-            };
+            dm.truckRoute = new[] { Pt(route, "E0", 230, 1.8f), Pt(route, "E1", 26, 1.8f), Pt(route, "E2", 18, 5), Pt(route, "E3", 18, 13), Pt(route, "E4", 16.2f, 18), Pt(route, "E5", 15f, 21.5f) };
+            dm.truckExit = new[] { Pt(route, "S0", 15.5f, 27), Pt(route, "S1", 18.5f, 33), Pt(route, "S2", 21, 30), Pt(route, "S3", 19, 22), Pt(route, "S4", 18, 12),
+                                   Pt(route, "S5", 18, 5), Pt(route, "S6", 12, 1.8f), Pt(route, "S7", -230, 1.8f) };
+
+            // El lechero en Rastrojero: por el camino de tierra hasta el tambo y vuelta
+            var milk = sys.AddComponent<MilkmanVisit>();
+            var mr = Shapes.Empty(sys.transform, "RutaLechero", Vector3.zero).transform;
+            milk.routeIn = new[] { Pt(mr, "L0", -230, -1.8f), Pt(mr, "L1", 10, -1.8f), Pt(mr, "L2", 18, 4), Pt(mr, "L3", 18, 30), Pt(mr, "L4", 18, 48), Pt(mr, "L5", 20, 53.5f) };
+            milk.routeOut = new[] { Pt(mr, "M0", 24, 52), Pt(mr, "M1", 21, 46), Pt(mr, "M2", 18, 38), Pt(mr, "M3", 18, 6), Pt(mr, "M4", 22, 1.8f)
+                , Pt(mr, "M5", 230, -1.8f) };
 
             var nav = new GameObject("CaminoClientes").AddComponent<StoreNav>();
             var nt = nav.transform;
@@ -658,9 +904,9 @@ namespace LaTranquera.EditorTools
             nav.spawnEast = Shapes.Empty(nt, "AparecenEste", new Vector3(38, 0.03f, 4.8f)).transform;
             nav.curbWest = Shapes.Empty(nt, "BanquinaOeste", new Vector3(-7, 0.03f, 4.8f)).transform;
             nav.curbEast = Shapes.Empty(nt, "BanquinaEste", new Vector3(7, 0.03f, 4.8f)).transform;
-            nav.parking = Shapes.Empty(nt, "Estacionamiento", new Vector3(0, 0.03f, 11f)).transform;
-            nav.doorOutside = Shapes.Empty(nt, "PuertaAfuera", new Vector3(0, 0.06f, 15.2f)).transform;
-            nav.doorInside = Shapes.Empty(nt, "PuertaAdentro", new Vector3(0, 0.03f, 16.9f)).transform;
+            nav.parking = Shapes.Empty(nt, "Estacionamiento", new Vector3(0, 0.03f, 10f)).transform;
+            nav.doorOutside = Shapes.Empty(nt, "PuertaAfuera", new Vector3(0, FL, 14.6f)).transform;
+            nav.doorInside = Shapes.Empty(nt, "PuertaAdentro", new Vector3(0, FL, 16.9f)).transform;
 
             var es = new GameObject("EventSystem");
             es.AddComponent<EventSystem>();
@@ -670,7 +916,7 @@ namespace LaTranquera.EditorTools
         static void Player()
         {
             var p = new GameObject("Jugador");
-            p.transform.position = new Vector3(0, 0.1f, 11f);
+            p.transform.position = new Vector3(0, 0.15f, 10f);
             var cc = p.AddComponent<CharacterController>();
             cc.height = 1.8f; cc.radius = 0.3f; cc.center = new Vector3(0, 0.9f, 0); cc.stepOffset = 0.35f; cc.slopeLimit = 50f;
             var pc = p.AddComponent<PlayerController>();

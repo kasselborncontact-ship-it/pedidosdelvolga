@@ -16,7 +16,8 @@ namespace LaTranquera
         public Vector3 playerPos;
         public float playerYaw;
         public List<PriceSave> prices = new List<PriceSave>();
-        public List<BedSave> beds = new List<BedSave>();
+        public List<PatchSave> patches = new List<PatchSave>();
+        public List<string> upgrades = new List<string>();
         public List<ShelfSave> shelves = new List<ShelfSave>();
         public List<ObjSave> objects = new List<ObjSave>();
         public List<DeliveryManager.Order> orders = new List<DeliveryManager.Order>();
@@ -27,15 +28,13 @@ namespace LaTranquera
     [Serializable] public class PriceSave { public string id; public int price; }
 
     [Serializable]
-    public class BedSave
+    public class PatchSave
     {
-        public string id;
-        public bool locked, tilled;
-        public float till, water;
-        public List<PlantSave> plants = new List<PlantSave>();
+        public Vector3 pos;
+        public float till, water, growth, dry;
+        public string crop;
+        public bool wilted, dead;
     }
-
-    [Serializable] public class PlantSave { public string crop; public float growth, dry; public bool wilted, dead; }
 
     [Serializable]
     public class ShelfSave
