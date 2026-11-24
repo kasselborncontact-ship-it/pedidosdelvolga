@@ -11,7 +11,10 @@ namespace LaTranquera
     /// </summary>
     public static class VehicleVisuals
     {
-        public enum Kind { F100, Rastrojero, Falcon }
+        public enum Kind { F100, Rastrojero, Falcon, Camion }
+
+        /// <summary>¿Hay un modelo 3D cargado para este vehículo? (Resources/Vehiculos/...)</summary>
+        public static bool HasModel(Kind k) => ModelLib.Has("Vehiculos/" + k);
 
         public static readonly Color[] ClassicColors =
         {
@@ -32,9 +35,12 @@ namespace LaTranquera
             if (prefab != null)
             {
                 var inst = Object.Instantiate(prefab, parent);
-                Shapes.RemoveAllColliders(inst);
+                ModelLib.Fix(inst);
+                // el modelo viene con su color; si es el auto de tránsito, lo pintamos del color pedido
+                if (kind == Kind.Falcon) Repaint(inst, paint);
                 return inst;
             }
+            if (kind == Kind.Camion) kind = Kind.F100; // sin modelo de camión, usamos la chata
             if (!meshes.TryGetValue(kind, out var mesh) || mesh == null)
             {
                 mesh = BuildMesh(kind);
@@ -52,6 +58,22 @@ namespace LaTranquera
                 Mats.Get(new Color(0.75f, 0.08f, 0.06f), 0.6f),
             };
             return MeshKit.Object(parent, "Vehiculo_" + kind, mesh, mats, Vector3.zero);
+        }
+
+        /// <summary>Cambia el color de la pintura (el material más usado que no sea vidrio, goma ni cromo).</summary>
+        static void Repaint(GameObject go, Color paint)
+        {
+            foreach (var r in go.GetComponentsInChildren<Renderer>())
+            {
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null) continue;
+                    string n = mats[i].name.ToLower();
+                    if (n.StartsWith("red") && !n.Contains("light")) mats[i] = Mats.Get(paint, 0.55f, 0.1f);
+                }
+                r.sharedMaterials = mats;
+            }
         }
 
         static List<Vector2> P(params float[] zy)

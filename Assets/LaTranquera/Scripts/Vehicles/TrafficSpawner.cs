@@ -33,9 +33,12 @@ namespace LaTranquera
             go.transform.position = new Vector3(east ? -halfLength : halfLength, 0, z);
             go.transform.rotation = Quaternion.LookRotation(east ? Vector3.right : Vector3.left);
             var kind = (VehicleVisuals.Kind)Random.Range(0, 3);
+            // si hay modelo de camión, de vez en cuando pasa uno (más lento)
+            bool truck = VehicleVisuals.HasModel(VehicleVisuals.Kind.Camion) && Random.value < 0.25f;
+            if (truck) kind = VehicleVisuals.Kind.Camion;
             VehicleVisuals.Build(kind, go.transform, VehicleVisuals.ClassicColors[Random.Range(0, VehicleVisuals.ClassicColors.Length)]);
             var car = go.AddComponent<PassingCar>();
-            car.speed = Random.Range(speedKmh.x, speedKmh.y) / 3.6f;
+            car.speed = Random.Range(speedKmh.x, speedKmh.y) / 3.6f * (truck ? 0.7f : 1f);
             car.limit = halfLength + 5f;
         }
     }

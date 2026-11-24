@@ -405,14 +405,31 @@ namespace LaTranquera.EditorTools
             // --- Estanterías ---
             ShelfObj(inter, "Estanteria_1", "estanteria_1", new Vector3(-3.6f, FL, 19f), 90, 2.4f, 0.42f, 4, 3, 0.12f, 0.44f, false, new Vector3(-2.6f, FL, 19f));
             ShelfObj(inter, "Estanteria_2", "estanteria_2", new Vector3(-1.05f, FL, 21.65f), 180, 2.0f, 0.42f, 4, 3, 0.12f, 0.44f, false, new Vector3(-1.05f, FL, 20.75f));
-            ShelfObj(inter, "Heladera", "heladera_1", new Vector3(1.45f, FL, 21.55f), 180, 1.4f, 0.5f, 4, 2, 0.28f, 0.42f, true, new Vector3(1.45f, FL, 20.55f));
+            if (ModelLib.Has("Modelos/HeladeraExhibidora"))
+            {
+                // dos heladeras exhibidoras con puerta de vidrio (modelo 3D)
+                for (int i = 0; i < 2; i++)
+                {
+                    float x = 1.0f + i * 0.86f;
+                    var model = ModelLib.Place(estatico, "Modelos/HeladeraExhibidora", "HeladeraExhibidora", new Vector3(x, FL, 21.47f), 180);
+                    var sh = ShelfObj(inter, "Heladera_" + (i + 1), "heladera_" + (i + 1), new Vector3(x, FL, 21.47f), 180, 0.62f, 0.5f, 4, 1, 0.32f, 0.38f, true, new Vector3(x, FL, 20.5f), false);
+                    sh.displayName = "Heladera";
+                    // paredes invisibles para no atravesarla
+                    var col = model.AddComponent<BoxCollider>(); col.center = new Vector3(0, 0.97f, -0.32f); col.size = new Vector3(0.82f, 1.95f, 0.16f);
+                    var colI = model.AddComponent<BoxCollider>(); colI.center = new Vector3(-0.38f, 0.97f, 0); colI.size = new Vector3(0.06f, 1.95f, 0.8f);
+                    var colD = model.AddComponent<BoxCollider>(); colD.center = new Vector3(0.38f, 0.97f, 0); colD.size = new Vector3(0.06f, 1.95f, 0.8f);
+                }
+                WorldLabel.Create(inter, "LÁCTEOS", new Vector3(1.43f, FL + 2.05f, 21.05f), new Vector2(1.6f, 0.15f), 110, new Color(0.15f, 0.3f, 0.7f), Vector3.back);
+            }
+            else
+                ShelfObj(inter, "Heladera", "heladera_1", new Vector3(1.45f, FL, 21.55f), 180, 1.4f, 0.5f, 4, 2, 0.28f, 0.42f, true, new Vector3(1.45f, FL, 20.55f));
 
             // --- Mostrador ---
             var counterGo = Shapes.Empty(inter, "Mostrador", Vector3.zero);
             var ct = counterGo.transform;
-            W.TBoxB(ct, "Cuerpo", new Vector3(2.6f, FL, 18.3f), new Vector3(0.6f, CT - FL - 0.04f, 2.6f), W.Madera);
-            W.TBoxB(ct, "Frente", new Vector3(2.28f, FL, 18.3f), new Vector3(0.03f, CT - FL - 0.08f, 2.62f), TexKit.Mat("madera", new Color(0.75f, 0.6f, 0.45f)), 0, false);
-            Shapes.Box(ct, "Tapa", new Vector3(2.6f, CT - 0.04f, 18.3f), new Vector3(0.72f, 0.04f, 2.72f), new Color(0.85f, 0.82f, 0.75f), true);
+            W.TBoxB(ct, "Cuerpo", new Vector3(2.6f, FL, 18.6f), new Vector3(0.6f, CT - FL - 0.04f, 3.2f), W.Madera);
+            W.TBoxB(ct, "Frente", new Vector3(2.28f, FL, 18.6f), new Vector3(0.03f, CT - FL - 0.08f, 3.22f), TexKit.Mat("madera", new Color(0.75f, 0.6f, 0.45f)), 0, false);
+            Shapes.Box(ct, "Tapa", new Vector3(2.6f, CT - 0.04f, 18.6f), new Vector3(0.72f, 0.04f, 3.32f), new Color(0.85f, 0.82f, 0.75f), true);
             var co = counterGo.AddComponent<CheckoutCounter>();
             co.customerPoint = Shapes.Empty(ct, "PuntoCliente", new Vector3(1.75f, FL, 18.4f), new Vector3(0, 90, 0)).transform;
             co.queuePoints = new[]
@@ -429,14 +446,28 @@ namespace LaTranquera.EditorTools
             Shapes.Box(ct, "LectorVidrio", new Vector3(2.58f, CT + 0.03f, 18.05f), new Vector3(0.12f, 0.003f, 0.1f), Mats.Emissive(new Color(1f, 0.15f, 0.1f), 1.5f), false);
             Shapes.Box(ct, "BolsaPapel", new Vector3(2.42f, CT, 17.15f), new Vector3(0.18f, 0.25f, 0.12f), new Color(0.8f, 0.68f, 0.5f), false);
             // balanza vieja de almacén (decorativa)
-            var bal = Shapes.Empty(ct, "Balanza", new Vector3(2.62f, CT, 19.75f)).transform;
-            Shapes.Box(bal, "Base", Vector3.zero, new Vector3(0.3f, 0.12f, 0.25f), new Color(0.75f, 0.15f, 0.12f), false);
-            Shapes.Cyl(bal, "Plato", new Vector3(0, 0.12f, 0), 0.3f, 0.02f, new Color(0.8f, 0.8f, 0.82f), false);
-            Shapes.Box(bal, "Cuadrante", new Vector3(0, 0.12f, 0.08f), new Vector3(0.24f, 0.25f, 0.06f), Color.white, false);
-            bal.gameObject.AddComponent<BoxCollider>().size = new Vector3(0.3f, 0.4f, 0.3f);
-            var bd = bal.gameObject.AddComponent<Decor>(); bd.displayName = "Balanza de almacén"; bd.action = "[E] Mirar"; bd.message = "Una balanza de las de antes. (En la Fase 3 se usa para la carne.)";
+            // balanza de almacén: del lado del cliente, mirando hacia él
+            var balModel = ModelLib.Place(ct, "Modelos/Balanza", "Balanza", new Vector3(2.45f, CT, 19.95f), -90);
+            Transform bal;
+            if (balModel != null) { bal = balModel.transform; ModelLib.FitCollider(balModel); }
+            else
+            {
+                bal = Shapes.Empty(ct, "Balanza", new Vector3(2.62f, CT, 19.95f)).transform;
+                Shapes.Box(bal, "Base", Vector3.zero, new Vector3(0.3f, 0.12f, 0.25f), new Color(0.75f, 0.15f, 0.12f), false);
+                Shapes.Cyl(bal, "Plato", new Vector3(0, 0.12f, 0), 0.3f, 0.02f, new Color(0.8f, 0.8f, 0.82f), false);
+                Shapes.Box(bal, "Cuadrante", new Vector3(0, 0.12f, 0.08f), new Vector3(0.24f, 0.25f, 0.06f), Color.white, false);
+                bal.gameObject.AddComponent<BoxCollider>().size = new Vector3(0.3f, 0.4f, 0.3f);
+            }
+            var bd = bal.gameObject.AddComponent<Decor>(); bd.displayName = "Balanza de almacén"; bd.action = "[E] Mirar"; bd.message = "Una balanza de las de antes. (En la Fase 3 se usa para la carne y las verduras sueltas.)";
+            // caja registradora (modelo 3D) con las teclas hacia el jugador
+            var reg = ModelLib.Place(ct, "Modelos/CajaRegistradora", "CajaRegistradora", new Vector3(2.62f, CT, 19.3f), 90);
+            if (reg != null)
+            {
+                ModelLib.FitCollider(reg);
+                var rdc = reg.AddComponent<Decor>(); rdc.displayName = "Caja registradora"; rdc.action = "";
+            }
 
-            var scr = Shapes.Empty(ct, "PantallaCaja", new Vector3(2.8f, CT, 19.25f), new Vector3(0, 90, 0));
+            var scr = Shapes.Empty(ct, "PantallaCaja", new Vector3(2.8f, CT, 19.85f), new Vector3(0, 90, 0));
             var screen = scr.AddComponent<RegisterScreen>();
             screen.counter = co; screen.Build(); co.screen = screen;
 
@@ -499,8 +530,18 @@ namespace LaTranquera.EditorTools
         }
 
         static Shelf ShelfObj(Transform parent, string name, string id, Vector3 pos, float yaw, float width, float depth, int levels, int slots,
-            float firstY, float spacing, bool fridge, Vector3 customerPos)
+            float firstY, float spacing, bool fridge, Vector3 customerPos, bool drawFrame = true)
         {
+            if (!drawFrame)
+            {
+                var g = Shapes.Empty(parent, name, pos, new Vector3(0, yaw, 0));
+                var sh = g.AddComponent<Shelf>();
+                sh.shelfId = id; sh.isFridge = fridge; sh.displayName = fridge ? "Heladera" : "Estantería";
+                sh.width = width; sh.depth = depth; sh.levels = levels; sh.slotsPerLevel = slots;
+                sh.firstLevelY = firstY; sh.levelSpacing = spacing;
+                sh.customerPoint = Shapes.Empty(parent, name + "_PuntoCliente", customerPos).transform;
+                return sh;
+            }
             var go = Shapes.Empty(parent, name, pos, new Vector3(0, yaw, 0));
             var t = go.transform;
             Material frame = fridge ? Mats.Get(new Color(0.92f, 0.92f, 0.94f), 0.5f) : W.Madera;

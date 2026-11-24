@@ -1,0 +1,9 @@
+MODELOS 3D QUE APORTÓ EL JUGADOR (preparados con Blender: tamaño real, frente hacia +Z, vidrios marcados)
+
+Modelos/Balanza.fbx              <- kitchen_weighing.FBX   (balanza roja con reloj, en el mostrador)
+Modelos/CajaRegistradora.fbx     <- register.zip (cashregister.obj + texturas)
+Modelos/HeladeraExhibidora.fbx   <- glass_door_free_model_gray.FBX (dos en el almacén, para lácteos)
+Vehiculos/Falcon.fbx             <- Car.fbx   (sedán del tránsito; se pinta de colores distintos)
+Vehiculos/Camion.fbx             <- gazOld.fbx (camión viejo del tránsito; venía sin texturas, se pintó)
+
+Licencias: revisar en la página de donde se bajó cada uno que permita uso en un juego comercial.
