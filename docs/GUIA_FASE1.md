@@ -23,11 +23,17 @@ Esta guía está pensada para alguien que **nunca usó Unity**. Seguila en orden
 
 ## Paso 3 · Copiar el juego dentro del proyecto
 
-1. Bajá este repositorio: botón verde **Code → Download ZIP** en GitHub (o clonalo con GitHub Desktop).
-   Asegurate de bajar la rama `claude/la-tranquera-farm-game-xsq2ei` (o la rama principal, si ya se unió).
-2. Descomprimí el ZIP. Adentro hay una carpeta `Assets/LaTranquera`.
-3. Copiá la carpeta **`LaTranquera`** completa dentro de la carpeta **`Assets`** de tu proyecto
-   (queda `TuProyecto/Assets/LaTranquera/...`).
+1. Bajá el código de la rama correcta con este enlace directo (tenés que estar con tu cuenta de GitHub abierta):
+   https://github.com/kasselborncontact-ship-it/pedidosdelvolga/archive/refs/heads/claude/la-tranquera-farm-game-xsq2ei.zip
+   > ⚠️ Si bajás el ZIP desde la página principal sin cambiar la rama, te baja la rama `main`, que **solo tiene el README**.
+   > Para hacerlo a mano: en GitHub, arriba a la izquierda, el botón que dice **main** → elegí
+   > `claude/la-tranquera-farm-game-xsq2ei` → después **Code → Download ZIP**.
+2. Descomprimí el ZIP (clic derecho → **Extraer todo**). Queda una carpeta llamada
+   `pedidosdelvolga-claude-la-tranquera-farm-game-xsq2ei`. Entrá: adentro está **`Assets`**, y adentro de esa, **`LaTranquera`**.
+3. Abrí también la carpeta de tu proyecto de Unity (la que creaste en el Paso 2, por ejemplo `Documentos/Juegos/LaTranquera`).
+   Adentro tiene una carpeta **`Assets`**. Copiá la carpeta **`LaTranquera`** del ZIP y pegala dentro de ese `Assets`.
+   Tiene que quedar: `LaTranquera (tu proyecto)/Assets/LaTranquera/Scripts/...`
+   > Tip: en Unity, clic derecho sobre la carpeta **Assets** (ventana Project) → **Show in Explorer** te abre la carpeta justa.
 4. Volvé a Unity: va a importar los archivos solo. Mirá la ventana **Console** (abajo):
    **no tiene que haber errores rojos**. (Si hay advertencias amarillas, no pasa nada.)
 
