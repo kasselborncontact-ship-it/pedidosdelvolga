@@ -39,6 +39,10 @@ namespace LaTranquera.EditorTools
                 return;
 
             EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
+            // Lo que pusiste vos a mano dentro de "MIS COSAS" se guarda y se vuelve a poner
+            const string mineName = "MIS COSAS", minePath = "Assets/LaTranquera/MisCosas.prefab";
+            var mineOld = GameObject.Find(mineName);
+            if (mineOld != null) PrefabUtility.SaveAsPrefabAsset(mineOld, minePath);
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             Mats.EnsureFolder(Mats.Folder);
             Mats.EnsureFolder("Assets/LaTranquera/Scenes");
@@ -82,6 +86,16 @@ namespace LaTranquera.EditorTools
                 sun.GetComponent<DayNightCycle>().nightLights = new List<Light>(nightLights);
 
                 foreach (Transform t in estatico) SetStatic(t.gameObject);
+
+                var minePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(minePath);
+                GameObject mine;
+                if (minePrefab != null)
+                {
+                    mine = (GameObject)PrefabUtility.InstantiatePrefab(minePrefab);
+                    PrefabUtility.UnpackPrefabInstance(mine, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+                    mine.name = mineName;
+                }
+                else mine = new GameObject(mineName);
 
                 EditorSceneManager.SaveScene(scene, ScenePath);
                 var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
