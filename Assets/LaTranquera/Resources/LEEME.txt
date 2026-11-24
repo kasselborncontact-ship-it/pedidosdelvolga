@@ -1,0 +1,27 @@
+CARPETA Resources: ACÁ VAN LOS MODELOS QUE REEMPLAZAN A LAS FORMAS SIMPLES
+========================================================================
+
+El juego busca prefabs con estos nombres. Si existen, los usa; si no, dibuja la forma simple.
+La base del modelo tiene que quedar en y = 0 (apoyado en el piso) y el frente mirando a +Z.
+No hace falta que tengan colliders (el juego los saca y pone los suyos).
+
+Productos/      un prefab por producto, con el id como nombre:
+                lechuga, tomate, zanahoria, yerba, fideos, harina, aceite, leche, queso, manteca
+                (tamaño real: una lechuga mide unos 22 cm, un tomate 8 cm)
+
+Plantas/        cultivo_etapa (etapas 0 a 3):
+                lechuga_0 ... lechuga_3, tomate_0 ... tomate_3, zanahoria_0 ... zanahoria_3
+
+Clientes/       cualquier cantidad de personajes (cliente_0, cliente_1, ...). Se elige uno al azar.
+                Altura aproximada 1,75 m.
+
+Vehiculos/      F100, Rastrojero, Falcon (largo aproximado 5 m, frente hacia +Z)
+
+Iconos/         imágenes PNG para el catálogo de la computadora, con el id del artículo:
+                caja_yerba, caja_fideos, ..., sem_lechuga, sem_tomate, sem_zanahoria, cajon
+                (si no hay, el juego saca una "foto" del objeto automáticamente)
+
+Sfx/            sonidos .wav u .ogg: beep, error, ok, cash, pick, drop, water, dig, key
+
+Cómo crear un prefab: arrastrá el modelo (.fbx/.glb) a la escena, ajustá tamaño y rotación,
+y después arrastralo desde la ventana Hierarchy a la carpeta que corresponde. Ponele el nombre exacto.
