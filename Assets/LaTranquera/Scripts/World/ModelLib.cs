@@ -44,9 +44,22 @@ namespace LaTranquera
                         mats[i] = Mats.Glass(new Color(0.75f, 0.85f, 0.9f, 0.22f));
                         changed = true;
                     }
+                    else if (n.Contains("branch") || n.Contains("hedge") || n.Contains("shrubbery") || n.Contains("grass") || n.Contains("flower") || n.Contains("clover") || n.Contains("leaf"))
+                    {
+                        mats[i] = Mats.ClipCopy(mats[i]); // hojas con transparencia recortada
+                        changed = true;
+                    }
                 }
                 if (changed) r.sharedMaterials = mats;
             }
+        }
+
+        /// <summary>Pone el modelo con una escala (árboles más grandes o más chicos).</summary>
+        public static GameObject Place(Transform parent, string path, string name, Vector3 localPos, float yaw, float scale)
+        {
+            var g = Place(parent, path, name, localPos, yaw);
+            if (g != null) g.transform.localScale = Vector3.one * scale;
+            return g;
         }
 
         /// <summary>Agrega un BoxCollider que envuelve todo el modelo (en el contenedor).</summary>

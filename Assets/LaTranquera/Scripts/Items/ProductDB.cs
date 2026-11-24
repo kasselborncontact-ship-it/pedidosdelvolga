@@ -5,7 +5,7 @@ namespace LaTranquera
 {
     public enum Storage { Estanteria, Heladera }
 
-    public enum ProductShape { Lechuga, Tomate, Zanahoria, Yerba, Fideos, Harina, Aceite, Leche, Queso, Manteca, Cebolla, Papa, Choclo, Zapallo, Sandia, Frutilla }
+    public enum ProductShape { Lechuga, Tomate, Zanahoria, Yerba, Fideos, Harina, Aceite, Leche, Queso, Manteca, Cebolla, Papa, Choclo, Zapallo, Sandia, Frutilla, Pan }
 
     /// <summary>Un producto que se vende en el almacén.</summary>
     public class ProductDef
@@ -37,16 +37,16 @@ namespace LaTranquera
             new ProductDef { id = "tomate", name = "Tomate", shape = ProductShape.Tomate, storage = Storage.Estanteria,
                 refPrice = 600, slotCap = 20, crateCap = 24, size = new Vector3(0.085f, 0.08f, 0.085f) },
             new ProductDef { id = "zanahoria", name = "Atado de zanahorias", shape = ProductShape.Zanahoria, storage = Storage.Estanteria,
-                refPrice = 900, slotCap = 8, crateCap = 12, size = new Vector3(0.26f, 0.07f, 0.11f) },
+                refPrice = 900, slotCap = 8, crateCap = 12, size = new Vector3(0.13f, 0.26f, 0.13f) },
 
             new ProductDef { id = "cebolla", name = "Cebolla", shape = ProductShape.Cebolla, storage = Storage.Estanteria,
                 refPrice = 350, slotCap = 16, crateCap = 30, size = new Vector3(0.08f, 0.09f, 0.08f) },
             new ProductDef { id = "papa", name = "Papa", shape = ProductShape.Papa, storage = Storage.Estanteria,
                 refPrice = 300, slotCap = 16, crateCap = 30, size = new Vector3(0.1f, 0.06f, 0.07f) },
             new ProductDef { id = "choclo", name = "Choclo", shape = ProductShape.Choclo, storage = Storage.Estanteria,
-                refPrice = 700, slotCap = 8, crateCap = 12, size = new Vector3(0.26f, 0.07f, 0.075f) },
-            new ProductDef { id = "zapallo", name = "Zapallo anco", shape = ProductShape.Zapallo, storage = Storage.Estanteria,
-                refPrice = 2200, slotCap = 4, crateCap = 4, size = new Vector3(0.3f, 0.14f, 0.15f) },
+                refPrice = 700, slotCap = 8, crateCap = 12, size = new Vector3(0.2f, 0.19f, 0.18f) },
+            new ProductDef { id = "zapallo", name = "Zapallo", shape = ProductShape.Zapallo, storage = Storage.Estanteria,
+                refPrice = 2200, slotCap = 4, crateCap = 3, size = new Vector3(0.27f, 0.15f, 0.27f) },
             new ProductDef { id = "sandia", name = "Sandía", shape = ProductShape.Sandia, storage = Storage.Estanteria,
                 refPrice = 5000, slotCap = 2, crateCap = 2, size = new Vector3(0.36f, 0.24f, 0.24f) },
             new ProductDef { id = "frutilla", name = "Frutillas (bandeja)", shape = ProductShape.Frutilla, storage = Storage.Heladera,
@@ -61,16 +61,18 @@ namespace LaTranquera
                 refPrice = 1000, cost = 700, pack = 10, slotCap = 8, crateCap = 10, size = new Vector3(0.13f, 0.21f, 0.09f) },
             new ProductDef { id = "aceite", name = "Aceite de girasol 1,5 L", shape = ProductShape.Aceite, storage = Storage.Estanteria,
                 refPrice = 3500, cost = 2600, pack = 6, slotCap = 8, crateCap = 6, size = new Vector3(0.09f, 0.31f, 0.09f) },
+            new ProductDef { id = "pan", name = "Pan casero", shape = ProductShape.Pan, storage = Storage.Estanteria,
+                refPrice = 1800, cost = 1200, pack = 6, slotCap = 4, crateCap = 4, size = new Vector3(0.3f, 0.23f, 0.19f) },
             new ProductDef { id = "leche", name = "Leche 1 L (botella)", shape = ProductShape.Leche, storage = Storage.Heladera,
                 refPrice = 1400, cost = 1000, pack = 12, slotCap = 10, crateCap = 12, size = new Vector3(0.09f, 0.25f, 0.09f) },
             new ProductDef { id = "queso", name = "Queso cremoso", shape = ProductShape.Queso, storage = Storage.Heladera,
-                refPrice = 6000, cost = 4500, pack = 4, slotCap = 6, crateCap = 4, size = new Vector3(0.16f, 0.09f, 0.16f) },
+                refPrice = 6000, cost = 4500, pack = 4, slotCap = 6, crateCap = 4, size = new Vector3(0.16f, 0.06f, 0.16f) },
             new ProductDef { id = "manteca", name = "Manteca 200 g", shape = ProductShape.Manteca, storage = Storage.Heladera,
                 refPrice = 2200, cost = 1600, pack = 10, slotCap = 12, crateCap = 10, size = new Vector3(0.11f, 0.05f, 0.07f) },
         };
 
         /// <summary>Cosas que los clientes a veces piden y todavía no vendemos (fases siguientes).</summary>
-        public static readonly string[] NotYetSold = { "huevos", "pan casero", "carne", "chorizos", "dulce de leche", "queso de campo" };
+        public static readonly string[] NotYetSold = { "huevos", "facturas", "carne", "chorizos", "dulce de leche", "queso de campo" };
 
         static Dictionary<string, ProductDef> map;
         public static ProductDef Get(string id)

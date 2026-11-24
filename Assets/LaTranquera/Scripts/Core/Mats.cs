@@ -139,6 +139,52 @@ namespace LaTranquera
             return m;
         }
 
+        /// <summary>
+        /// Copia de un material con "recorte" de transparencia (hojas, flores, pasto de los modelos):
+        /// lo transparente de la textura no se dibuja, y se ven las dos caras.
+        /// </summary>
+        public static Material ClipCopy(Material src)
+        {
+            string name = "recorte_" + src.name.Replace(" ", "_").Replace("#", "").Replace("/", "_");
+            if (cache.TryGetValue(name, out var m) && m != null) return m;
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                EnsureFolder(Folder);
+                string path = Folder + "/" + name + ".mat";
+                m = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (m == null)
+                {
+                    m = MakeClip(src, name);
+                    AssetDatabase.CreateAsset(m, path);
+                }
+                cache[name] = m;
+                return m;
+            }
+#endif
+            m = MakeClip(src, name);
+            cache[name] = m;
+            return m;
+        }
+
+        static Material MakeClip(Material src, string name)
+        {
+            var sh = Shader.Find("Universal Render Pipeline/Lit");
+            var m = new Material(sh != null ? sh : src.shader) { name = name };
+            var tex = src.HasProperty("_BaseMap") ? src.GetTexture("_BaseMap") : src.mainTexture;
+            if (tex != null) { m.SetTexture("_BaseMap", tex); m.mainTexture = tex; }
+            m.SetColor("_BaseColor", Color.white);
+            m.SetFloat("_AlphaClip", 1f);
+            m.SetFloat("_Cutoff", 0.45f);
+            m.EnableKeyword("_ALPHATEST_ON");
+            m.SetFloat("_Cull", 0f);
+            m.SetFloat("_Smoothness", 0.1f);
+            m.renderQueue = 2450;
+            m.SetOverrideTag("RenderType", "TransparentCutout");
+            m.doubleSidedGI = true;
+            return m;
+        }
+
 #if UNITY_EDITOR
         public static void EnsureFolder(string path)
         {

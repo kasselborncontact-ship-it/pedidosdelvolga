@@ -137,6 +137,20 @@ namespace LaTranquera.EditorTools
 
         static float Rf => (float)rnd.NextDouble();
 
+        /// <summary>Pone un modelo de Resources/Modelos (si existe). Devuelve null si no está.</summary>
+        static GameObject Mdl(Transform p, string res, string name, Vector3 pos, float yaw, bool collider = false, float scale = 1f)
+        {
+            var g = ModelLib.Place(p, "Modelos/" + res, name, pos, yaw, scale);
+            if (g != null && collider) ModelLib.FitCollider(g);
+            return g;
+        }
+
+        static void Fan(Transform p, Vector3 pos)
+        {
+            var f = Mdl(p, "VentiladorTecho", "VentiladorDeTecho", pos, 0);
+            if (f != null) f.AddComponent<Spin>().degreesPerSecond = 200f;
+        }
+
         // ------------------------------------------------------------------
         static GameObject Lighting()
         {
@@ -374,6 +388,7 @@ namespace LaTranquera.EditorTools
             W.TBoxB(h, "PataBanco", new Vector3(-5.8f, y0, 15.4f), new Vector3(0.08f, 0.42f, 0.35f), W.Madera, 0, false);
             foreach (float x in new[] { -1.4f, 1.4f, 9f })
             {
+                if (Mdl(h, "Maceta", "Maceta", new Vector3(x, y0, 15.3f), Rf * 360, true) != null) continue;
                 Shapes.Cyl(h, "Maceta", new Vector3(x, y0, 15.3f), 0.45f, 0.45f, new Color(0.7f, 0.35f, 0.2f), true);
                 NatureKit.Place(NatureKit.Tree.Arbusto, h, new Vector3(x, y0 + 0.35f, 15.3f), rnd.Next(), Rf * 360, 0.45f);
             }
@@ -485,6 +500,8 @@ namespace LaTranquera.EditorTools
             var posnet = pn.AddComponent<Posnet>(); posnet.counter = co; posnet.Build(); co.posnet = posnet;
 
             // computadora en el escritorio del fondo
+            Mdl(inter, "SillaGiratoria", "SillaGiratoria", new Vector3(2.98f, FL, 21.25f), 90, true);
+            Fan(estatico, new Vector3(-1.6f, FL + WH - 0.33f, 19.2f));
             var desk = Shapes.Empty(inter, "Computadora", new Vector3(3.55f, FL, 21.25f), new Vector3(0, -90, 0)).transform;
             W.TBoxB(desk, "Escritorio", Vector3.zero, new Vector3(1.1f, 0.75f, 0.6f), W.Madera);
             Shapes.Box(desk, "Monitor", new Vector3(0, 0.95f, 0.15f), new Vector3(0.5f, 0.36f, 0.05f), new Color(0.1f, 0.1f, 0.12f), true);
@@ -652,6 +669,33 @@ namespace LaTranquera.EditorTools
             W.MakeDoor(inter, "Puerta del baño", new Vector3(-7.6f, y, 26.3f), -90, 0.8f, 2.2f, false, 95f);
             W.MakeDoor(inter, "Puerta del patio", new Vector3(-0.5f, y, 28f), 0, 1.0f, 2.4f, true, 95f, W.MaderaVerde);
 
+            // --- Comedor: mueble bajo con la tele vieja, alfombra, ventilador, biblioteca y perchero ---
+            if (Mdl(r, "MuebleBajo", "MuebleBajo", new Vector3(1.6f, y, 22.35f), 0, true) != null)
+            {
+                var tv = Mdl(inter, "Tele", "TeleVieja", new Vector3(1.35f, y + 0.338f, 22.4f), 0, true);
+                if (tv != null) { var td = tv.AddComponent<Decor>(); td.displayName = "Televisor viejo"; td.action = "[E] Prender la tele"; td.message = "Pasan el noticiero del campo: \"la hacienda viene firme\"."; }
+                Mdl(r, "Libros", "Libros", new Vector3(2.05f, y + 0.338f, 22.4f), 0);
+            }
+            Mdl(r, "AlfombraRect", "Alfombra", new Vector3(0.3f, y + 0.003f, 25.2f), 0);
+            Fan(estatico, new Vector3(-1.8f, y + WH - 0.33f, 24.4f));
+            Mdl(r, "Biblioteca", "Biblioteca", new Vector3(-3.6f, y, 27.0f), 90, true);
+            Mdl(r, "Perchero", "Perchero", new Vector3(-3.4f, y, 23.0f), 0, true);
+            // cocina: alacenas, olla y sartén en la cocina a leña, tabla con pan, platos, taza, tacho
+            Mdl(r, "Alacena", "Alacena", new Vector3(-7.0f, y + 1.5f, 27.66f), 180);
+            Mdl(r, "Alacena", "Alacena", new Vector3(-6.2f, y + 1.5f, 27.66f), 180);
+            Mdl(r, "Olla", "Olla", new Vector3(-9.5f, y + 0.87f, 23.5f), 20);
+            Mdl(r, "Sarten", "Sarten", new Vector3(-9.45f, y + 0.87f, 23.0f), 60);
+            Mdl(r, "TablaPicar", "TablaPicar", new Vector3(-6.9f, y + 0.9f, 27.5f), 0);
+            Mdl(r, "PanDecor", "Pan", new Vector3(-6.9f, y + 0.93f, 27.5f), 15);
+            Mdl(r, "Palote", "Palote", new Vector3(-6.25f, y + 0.9f, 27.45f), 5);
+            Mdl(r, "Plato", "Plato", new Vector3(-6.65f, y + 0.765f, 24.38f), 0);
+            Mdl(r, "Plato", "Plato", new Vector3(-5.95f, y + 0.765f, 24.82f), 0);
+            Mdl(r, "Taza", "Taza", new Vector3(-5.85f, y + 0.765f, 24.4f), 40);
+            Mdl(r, "Bowl", "Bowl", new Vector3(-6.75f, y + 0.765f, 24.85f), 0);
+            Mdl(r, "Tacho", "Tacho", new Vector3(-4.5f, y, 26.4f), 0, true);
+            // dormitorio: lámpara de pie
+            Mdl(r, "LamparaPie", "LamparaDePie", new Vector3(-4.5f, y, 16.65f), 0, true);
+
             // --- Comedor ---
             WorldParts.RoomLight(estatico, new Vector3(0, y + WH - 0.7f, 25f), 8f, 1.5f);
             FurnitureKit.DiningSet(r, new Vector3(0.3f, y, 25.2f), 2.0f, 1.0f, 6);
@@ -704,7 +748,8 @@ namespace LaTranquera.EditorTools
             var vd = vl.transform.parent.gameObject.AddComponent<Decor>();
             vd.displayName = "Velador"; vd.action = "[E] Prender / apagar"; vd.toggleLight = vl; vd.sound = "key";
             W.TBoxB(r, "Baúl", new Vector3(-7.5f, y, 16.6f), new Vector3(0.9f, 0.5f, 0.5f), TexKit.Mat("madera", new Color(0.7f, 0.55f, 0.45f)));
-            Shapes.Cyl(r, "Alfombra", new Vector3(-7.2f, y + 0.005f, 19f), 1.8f, 0.01f, new Color(0.55f, 0.35f, 0.3f), false);
+            if (Mdl(r, "AlfombraRedonda", "Alfombra", new Vector3(-7.0f, y + 0.003f, 19f), 0) == null)
+                Shapes.Cyl(r, "Alfombra", new Vector3(-7.2f, y + 0.005f, 19f), 1.8f, 0.01f, new Color(0.55f, 0.35f, 0.3f), false);
             return bed;
         }
 
@@ -724,6 +769,7 @@ namespace LaTranquera.EditorTools
             for (int i = 0; i < 14; i++)
                 MeshKit.AddBlob(leaves, 0, new Vector3(-2.6f + (i % 7) * 0.9f, 2.75f, 29.4f + (i / 7) * 2f), new Vector3(1.4f, 0.4f, 1.8f), r.Next(), 0.3f);
             MeshKit.Object(p, "Parra", MeshKit.Persist("parra", () => leaves.Build()), new[] { Mats.Get(new Color(0.3f, 0.5f, 0.2f), 0.2f) }, Vector3.zero);
+            Mdl(p, "Lavarropas", "Lavarropas", new Vector3(3.3f, 0, 28.75f), 0, true);
             // tendedero con ropa
             Shapes.Beam(p, "Tendedero", new Vector3(5, 1.8f, 31), new Vector3(10, 1.8f, 33), 0.015f, new Color(0.3f, 0.3f, 0.3f));
             W.TBoxB(p, "PosteTend", new Vector3(5, 0, 31), new Vector3(0.08f, 1.9f, 0.08f), W.Madera);
@@ -872,11 +918,32 @@ namespace LaTranquera.EditorTools
             // Álamos a lo largo del camino de tierra
             for (float z = 10; z <= 52; z += 5.5f) NatureKit.Place(NatureKit.Tree.Alamo, t, new Vector3(23.6f, 0, z), v++, Rf * 360, 0.9f + Rf * 0.2f);
             // Paraísos dando sombra
-            NatureKit.Place(NatureKit.Tree.Paraiso, t, new Vector3(-8, 0, 9), v++, 20);
-            NatureKit.Place(NatureKit.Tree.Paraiso, t, new Vector3(11.5f, 0, 9.5f), v++, 140);
-            NatureKit.Place(NatureKit.Tree.Paraiso, t, new Vector3(7, 0, 35), v++, 80);
-            NatureKit.Place(NatureKit.Tree.Paraiso, t, new Vector3(-8.5f, 0, 35.5f), v++, 200);
-            NatureKit.Place(NatureKit.Tree.Paraiso, t, new Vector3(-12, 0, 48), v++, 300);
+            // Árboles de sombra (modelos del kit de plantas; si no están, paraísos hechos por código)
+            var shade = new[] { new Vector3(-8, 0, 9), new Vector3(11.5f, 0, 9.5f), new Vector3(7, 0, 35), new Vector3(-8.5f, 0, 35.5f), new Vector3(-12, 0, 48),
+                                new Vector3(-50, 0, 52), new Vector3(-30, 0, 55), new Vector3(38, 0, 62), new Vector3(4, 0, 62), new Vector3(-20, 0, 8.5f) };
+            for (int i = 0; i < shade.Length; i++)
+                if (Mdl(t, "Arbol" + (1 + i % 3), "Arbol", shade[i], Rf * 360, false, 0.9f + Rf * 0.4f) == null)
+                    NatureKit.Place(NatureKit.Tree.Paraiso, t, shade[i], v++, Rf * 360);
+                else
+                {
+                    var col = new GameObject("ColliderTronco"); col.transform.SetParent(t, false); col.transform.localPosition = shade[i];
+                    var cc = col.AddComponent<CapsuleCollider>(); cc.radius = 0.3f; cc.height = 3f; cc.center = Vector3.up * 1.5f;
+                }
+            // Plantas alrededor de la casa: flores, arbustos, cerco vivo y matas de pasto alto
+            for (float z = 17f; z <= 27f; z += 2f) Mdl(t, z % 4 < 2 ? "Flores1" : "Flores2", "Flores", new Vector3(-10.8f, 0, z), Rf * 360);
+            foreach (var bp in new[] { new Vector3(-11.2f, 0, 14.4f), new Vector3(12.3f, 0, 14.2f), new Vector3(12.2f, 0, 27.6f), new Vector3(-11, 0, 29), new Vector3(-16, 0, 12.5f) })
+                Mdl(t, "Arbusto" + (1 + rnd.Next(3)), "Arbusto", bp, Rf * 360, false, 0.8f + Rf * 0.4f);
+            for (float x = -40; x <= -14; x += 2.4f) Mdl(t, "CercoVivo", "CercoVivo", new Vector3(x, 0, 6.8f), 0);
+            for (int i = 0; i < 60; i++)
+            {
+                Vector3 gp;
+                int side = rnd.Next(4);
+                if (side == 0) gp = new Vector3(-55.3f, 0, 8 + Rf * 72);
+                else if (side == 1) gp = new Vector3(45.3f, 0, 8 + Rf * 72);
+                else if (side == 2) gp = new Vector3(-55 + Rf * 100, 0, 81.3f);
+                else gp = new Vector3(-46 + Rf * 31, 0, 14f);
+                Mdl(t, "PastoAlto", "PastoAlto", gp, Rf * 360, false, 0.7f + Rf * 0.8f);
+            }
             // Arbustos sueltos
             for (int i = 0; i < 25; i++)
             {

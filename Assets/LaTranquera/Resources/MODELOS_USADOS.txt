@@ -7,3 +7,14 @@ Vehiculos/Falcon.fbx             <- Car.fbx   (sedán del tránsito; se pinta de
 Vehiculos/Camion.fbx             <- gazOld.fbx (camión viejo del tránsito; venía sin texturas, se pintó)
 
 Licencias: revisar en la página de donde se bajó cada uno que permita uso en un juego comercial.
+
+--- Segunda tanda ---
+Modelos/SillaGiratoria.fbx  <- silla_antigua_smoth.fbx (silla del escritorio de la computadora)
+Modelos/MuebleBajo.fbx      <- Long_Table.fbx (mueble bajo del comedor; venía sin texturas, se pintó madera)
+Kenney Furniture Kit (CC0): Tele (televisionVintage), VentiladorTecho (ceilingFan), Perchero, AlfombraRect, AlfombraRedonda,
+                            Maceta, MacetaChica, Lavarropas, Biblioteca, Libros, LamparaPie, Tacho, Alacena
+Kenney Food Kit (CC0):      Productos/lechuga (cabbage), tomate, zanahoria, cebolla, choclo (corn), zapallo (pumpkin),
+                            queso, aceite, pan (loaf, producto nuevo "Pan casero")
+                            Modelos/Olla, Sarten, TablaPicar, Plato, Taza, Palote, Bowl, PanDecor
+Shapespark low poly plants kit: Arbol1..3, CercoVivo, Arbusto1..3, Flores1..2, PastoAlto (hojas con recorte de transparencia)
+NO USADO: shelf_D1.fbx (formato FBX 6 de 2011, geometría rota y sin textura)

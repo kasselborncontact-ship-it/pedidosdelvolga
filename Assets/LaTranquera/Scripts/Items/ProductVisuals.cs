@@ -126,6 +126,10 @@ namespace LaTranquera
                     sph.transform.localRotation = Quaternion.Euler(0, 0, 90);
                     break;
                 }
+                case ProductShape.Pan:
+                    Shapes.Box(t, "Miga", Vector3.zero, new Vector3(s.x, s.y * 0.6f, s.z), new Color(0.85f, 0.62f, 0.32f), false);
+                    Shapes.Sphere(t, "Corteza", new Vector3(0, s.y * 0.6f, 0), new Vector3(s.x, s.y * 0.8f, s.z), new Color(0.78f, 0.52f, 0.25f));
+                    break;
                 case ProductShape.Frutilla:
                     Shapes.Box(t, "Bandeja", Vector3.zero, new Vector3(0.17f, 0.035f, 0.12f), new Color(0.95f, 0.95f, 0.92f), false);
                     for (int i = 0; i < 6; i++)
