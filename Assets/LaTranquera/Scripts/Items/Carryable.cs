@@ -31,6 +31,9 @@ namespace LaTranquera
             rb.mass = mass;
             rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+            rb.maxDepenetrationVelocity = 1.5f;  // si queda encimado con otra cosa, se separa suave (no "salta")
+            rb.linearDamping = 0.2f;
+            rb.angularDamping = 1.5f;
             rb.isKinematic = frozen;
         }
 

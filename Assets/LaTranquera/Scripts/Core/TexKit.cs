@@ -39,6 +39,26 @@ namespace LaTranquera
             return m;
         }
 
+        /// <summary>Material con textura y repetición distinta en cada eje (por ejemplo la ruta: 9 m a lo largo, el ancho entero a lo ancho).</summary>
+        public static Material MatST(string tex, Color tint, Vector2 metersXY, float smoothness = 0.15f)
+        {
+            string key = "tx_" + tex + "_" + ColorUtility.ToHtmlStringRGB(tint) + "_st";
+            var m = Mats.Get(key, tint, smoothness, 0f);
+            if (m.GetTexture("_BaseMap") == null)
+            {
+                var t = Get(tex, out _);
+                m.SetTexture("_BaseMap", t);
+                m.mainTexture = t;
+                var scale = new Vector2(1f / metersXY.x, 1f / metersXY.y);
+                m.SetTextureScale("_BaseMap", scale);
+                m.mainTextureScale = scale;
+#if UNITY_EDITOR
+                if (!Application.isPlaying) EditorUtility.SetDirty(m);
+#endif
+            }
+            return m;
+        }
+
         public static Texture2D Get(string name, out float meters)
         {
             meters = MetersOf(name);
@@ -83,6 +103,7 @@ namespace LaTranquera
                 case "teja": return 1.0f;
                 case "sandia": return 1.0f;
                 case "cemento": return 2.0f;
+                case "ruta": return 9.0f;
             }
             return 1f;
         }
@@ -262,6 +283,28 @@ namespace LaTranquera
                 }
                 case "cemento":
                     return new Color(0.66f, 0.65f, 0.62f) * (0.88f + n * 0.2f);
+                case "ruta":
+                {
+                    // U = a lo largo (9 m por repetición), V = a lo ancho (toda la ruta, 7,2 m)
+                    float g = Hash(Mathf.FloorToInt(u * 256), Mathf.FloorToInt(v * 256), 5);
+                    var c = new Color(0.21f, 0.21f, 0.22f) * (0.82f + g * 0.3f);
+                    float lane = Mathf.Abs(v - 0.5f);
+                    // huellas de las ruedas, más gastadas y claras
+                    foreach (float wv in new[] { 0.16f, 0.34f })
+                        if (Mathf.Abs(lane - wv) < 0.05f) c *= 1.12f;
+                    // parches de arreglo
+                    if (Fbm(u, v, 3, 44) > 0.7f) c *= 0.78f;
+                    // grietas
+                    float crack = Mathf.Abs(Fbm(u * 2, v * 2, 4, 9) - 0.5f);
+                    if (crack < 0.008f) c *= 0.55f;
+                    // banquina gastada en los bordes
+                    if (v < 0.015f || v > 0.985f) c = Color.Lerp(c, new Color(0.45f, 0.42f, 0.36f), 0.6f);
+                    // líneas: bordes blancos continuos y línea central amarilla discontinua
+                    Color paint = new Color(0.92f, 0.92f, 0.88f) * (0.85f + n * 0.2f);
+                    if (Mathf.Abs(v - 0.035f) < 0.009f || Mathf.Abs(v - 0.965f) < 0.009f) c = Color.Lerp(c, paint, 0.9f);
+                    if (Mathf.Abs(v - 0.5f) < 0.009f && u % 1f < 0.39f) c = Color.Lerp(c, new Color(0.95f, 0.8f, 0.25f), 0.9f);
+                    return c;
+                }
             }
             return Color.white;
         }

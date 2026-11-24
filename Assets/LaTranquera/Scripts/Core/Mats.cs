@@ -97,6 +97,48 @@ namespace LaTranquera
             return m;
         }
 
+        /// <summary>
+        /// Material con un shader propio del juego (pasto, hojas con viento). Si el shader no existe,
+        /// usa el Lit común de URP. setup = poner colores y valores.
+        /// </summary>
+        public static Material Custom(string name, string shader, Color color, System.Action<Material> setup)
+        {
+            var sh = Shader.Find(shader);
+            if (cache.TryGetValue(name, out var m) && m != null)
+            {
+#if UNITY_EDITOR
+                if (Application.isPlaying || AssetDatabase.Contains(m)) return m;
+#else
+                return m;
+#endif
+            }
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                EnsureFolder(Folder);
+                string path = Folder + "/" + name + ".mat";
+                m = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (m == null)
+                {
+                    m = sh != null ? new Material(sh) : Create(name, color, 0.2f, 0, false, null, true, true);
+                    AssetDatabase.CreateAsset(m, path);
+                }
+                if (sh != null && m.shader != sh) m.shader = sh;
+                m.SetColor("_BaseColor", color);
+                m.enableInstancing = true;
+                setup?.Invoke(m);
+                EditorUtility.SetDirty(m);
+                cache[name] = m;
+                return m;
+            }
+#endif
+            m = sh != null ? new Material(sh) : Create(name, color, 0.2f, 0, false, null, true, true);
+            m.SetColor("_BaseColor", color);
+            setup?.Invoke(m);
+            cache[name] = m;
+            return m;
+        }
+
 #if UNITY_EDITOR
         public static void EnsureFolder(string path)
         {

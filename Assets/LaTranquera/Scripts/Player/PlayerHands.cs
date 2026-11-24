@@ -49,6 +49,20 @@ namespace LaTranquera
             return ctx.hasHit && ctx.hit.distance < 3f && Vector3.Dot(ctx.hit.normal, Vector3.up) > 0.6f;
         }
 
+        static readonly Collider[] buf = new Collider[16];
+        static bool Overlapping(Carryable c, Collider[] own)
+        {
+            foreach (var col in own)
+            {
+                if (col.isTrigger) continue;
+                var b = col.bounds;
+                int n = Physics.OverlapBoxNonAlloc(b.center, b.extents * 0.95f, buf, col.transform.rotation, ~0, QueryTriggerInteraction.Ignore);
+                for (int i = 0; i < n; i++)
+                    if (!buf[i].transform.IsChildOf(c.transform)) return true;
+            }
+            return false;
+        }
+
         /// <summary>G: si mirás una superficie plana cerca (piso, mesa), lo apoya ahí. Si no, lo suelta.</summary>
         public void Drop(UseContext ctx)
         {
@@ -56,8 +70,12 @@ namespace LaTranquera
             if (c == null) return;
             if (CanPlaceOn(ctx))
             {
-                c.transform.position = ctx.hit.point + Vector3.up * 0.02f;
                 c.transform.rotation = Quaternion.Euler(0, cam.transform.eulerAngles.y, 0);
+                c.transform.position = ctx.hit.point + Vector3.up * 0.02f;
+                // si queda encimado con otra cosa, lo subimos un poco hasta que entre
+                var cols = c.GetComponentsInChildren<Collider>();
+                for (int tries = 0; tries < 10 && Overlapping(c, cols); tries++) c.transform.position += Vector3.up * 0.05f;
+                Physics.SyncTransforms();
             }
             else
             {

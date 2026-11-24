@@ -59,6 +59,8 @@ namespace LaTranquera
             public readonly List<Vector2> uv = new List<Vector2>();
             public readonly List<List<int>> subs = new List<List<int>>();
 
+            public readonly List<Vector2Int> smoothRanges = new List<Vector2Int>(); // vértices de piezas de torno (normales suaves)
+
             public Builder(int submeshes = 1) { for (int i = 0; i < submeshes; i++) subs.Add(new List<int>()); }
 
             /// <summary>Triángulo con cara plana (low poly).</summary>
@@ -81,6 +83,32 @@ namespace LaTranquera
                 Tri(sub, a, c, d, ua, uc, ud);
             }
 
+            /// <summary>Promedia normales en las piezas de torno para que se vean redondas (respeta los bordes filosos).</summary>
+            void SmoothLathe()
+            {
+                Vector3Int K(Vector3 p) => new Vector3Int(Mathf.RoundToInt(p.x * 2000), Mathf.RoundToInt(p.y * 2000), Mathf.RoundToInt(p.z * 2000));
+                foreach (var r in smoothRanges)
+                {
+                    var groups = new Dictionary<Vector3Int, List<int>>();
+                    for (int i = r.x; i < r.y; i++)
+                    {
+                        var k = K(v[i]);
+                        if (!groups.TryGetValue(k, out var l)) groups[k] = l = new List<int>();
+                        l.Add(i);
+                    }
+                    var res = new Vector3[r.y - r.x];
+                    foreach (var g in groups.Values)
+                        foreach (int i in g)
+                        {
+                            Vector3 acc = Vector3.zero;
+                            foreach (int j in g) if (Vector3.Dot(n[i], n[j]) > 0.75f) acc += n[j];
+                            res[i - r.x] = acc.normalized;
+                        }
+                    for (int i = r.x; i < r.y; i++) n[i] = res[i - r.x];
+                }
+                smoothRanges.Clear();
+            }
+
             /// <summary>Copia otra malla aplicándole una transformación.</summary>
             public void Add(Mesh m, Matrix4x4 mtx, int sub)
             {
@@ -98,6 +126,7 @@ namespace LaTranquera
 
             public Mesh Build(string name = "Malla")
             {
+                SmoothLathe();
                 var m = new Mesh { name = name };
                 if (v.Count > 65000) m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
                 m.SetVertices(v); m.SetNormals(n); m.SetUVs(0, uv);
@@ -277,6 +306,106 @@ namespace LaTranquera
                 b.Quad(sub, new Vector3(x0, p.y, p.x), new Vector3(x1, p.y, p.x), new Vector3(x1, q.y, q.x), new Vector3(x0, q.y, q.x),
                     Vector2.zero, Vector2.right, Vector2.one, Vector2.up);
             }
+        }
+
+        /// <summary>
+        /// Torno: gira un perfil (radio, altura) alrededor del eje Y. Sirve para patas torneadas,
+        /// inodoros, pavas, mates, botellas, lámparas... scaleZ estira para hacer óvalos.
+        /// El perfil va de abajo hacia arriba por AFUERA; si vuelve hacia adentro (bordes), queda hueco.
+        /// </summary>
+        public static void AddLathe(Builder b, int sub, Matrix4x4 mtx, List<Vector2> profile, int sides, float scaleZ = 1f, bool smooth = true)
+        {
+            int start = b.v.Count;
+            for (int i = 0; i < profile.Count - 1; i++)
+            {
+                Vector2 p0 = profile[i], p1 = profile[i + 1];
+                for (int k = 0; k < sides; k++)
+                {
+                    float a0 = k * Mathf.PI * 2 / sides, a1 = (k + 1) * Mathf.PI * 2 / sides;
+                    Vector3 R(Vector2 p, float a) => mtx.MultiplyPoint3x4(new Vector3(Mathf.Cos(a) * p.x, p.y, Mathf.Sin(a) * p.x * scaleZ));
+                    var v00 = R(p0, a0); var v01 = R(p0, a1); var v10 = R(p1, a0); var v11 = R(p1, a1);
+                    float u0 = k / (float)sides, u1 = (k + 1) / (float)sides;
+                    if (p0.x < 0.0001f) b.Tri(sub, v00, v10, v11, new Vector2(u0, p0.y), new Vector2(u0, p1.y), new Vector2(u1, p1.y));
+                    else if (p1.x < 0.0001f) b.Tri(sub, v00, v10, v01, new Vector2(u0, p0.y), new Vector2(u0, p1.y), new Vector2(u1, p0.y));
+                    else b.Quad(sub, v00, v10, v11, v01, new Vector2(u0, p0.y), new Vector2(u0, p1.y), new Vector2(u1, p1.y), new Vector2(u1, p0.y));
+                }
+            }
+            if (smooth) b.smoothRanges.Add(new Vector2Int(start, b.v.Count));
+        }
+
+        /// <summary>Perfil para AddLathe a partir de pares (radio, altura).</summary>
+        public static List<Vector2> Prof(params float[] ry)
+        {
+            var l = new List<Vector2>();
+            for (int i = 0; i < ry.Length; i += 2) l.Add(new Vector2(ry[i], ry[i + 1]));
+            return l;
+        }
+
+        /// <summary>Puntos de un rectángulo con esquinas redondeadas (en XZ), sentido horario visto de arriba.</summary>
+        public static List<Vector2> RoundedRect(float w, float l, float r, int perCorner = 5)
+        {
+            r = Mathf.Min(r, Mathf.Min(w, l) / 2 - 0.001f);
+            var pts = new List<Vector2>();
+            Vector2[] centers = { new Vector2(w / 2 - r, l / 2 - r), new Vector2(w / 2 - r, -l / 2 + r), new Vector2(-w / 2 + r, -l / 2 + r), new Vector2(-w / 2 + r, l / 2 - r) };
+            float[] start = { 90, 0, -90, -180 };
+            for (int c = 0; c < 4; c++)
+                for (int i = 0; i <= perCorner; i++)
+                {
+                    float a = (start[c] - 90f * i / perCorner) * Mathf.Deg2Rad;
+                    pts.Add(centers[c] + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r);
+                }
+            return pts;
+        }
+
+        /// <summary>
+        /// Recipiente con forma de rectángulo redondeado (bañera, pileta, bandeja): paredes con espesor,
+        /// borde arriba y fondo adentro. Base en y = 0.
+        /// </summary>
+        public static void AddBasin(Builder b, int sub, Vector3 center, float w, float l, float radius, float height, float wall, float floorH)
+        {
+            var outer = RoundedRect(w, l, radius);
+            var inner = RoundedRect(w - wall * 2, l - wall * 2, Mathf.Max(0.01f, radius - wall));
+            int n = outer.Count;
+            Vector3 O(int i, float y) => center + new Vector3(outer[i % n].x, y, outer[i % n].y);
+            Vector3 I(int i, float y) => center + new Vector3(inner[i % n].x, y, inner[i % n].y);
+            for (int i = 0; i < n; i++)
+            {
+                // pared de afuera
+                b.Quad(sub, O(i, 0), O(i + 1, 0), O(i + 1, height), O(i, height), Vector2.zero, Vector2.up, Vector2.one, Vector2.right);
+                // borde de arriba
+                b.Quad(sub, O(i, height), O(i + 1, height), I(i + 1, height), I(i, height), Vector2.zero, Vector2.up, Vector2.one, Vector2.right);
+                // pared de adentro
+                b.Quad(sub, I(i, height), I(i + 1, height), I(i + 1, floorH), I(i, floorH), Vector2.zero, Vector2.up, Vector2.one, Vector2.right);
+                // fondo de adentro y de abajo
+                b.Tri(sub, center + Vector3.up * floorH, I(i, floorH), I(i + 1, floorH));
+                b.Tri(sub, center, O(i + 1, 0), O(i, 0));
+            }
+        }
+
+        /// <summary>Caja con los bordes biselados (se ve mucho menos "cubo"). Base en y = 0 del centro dado.</summary>
+        public static void AddChamferBox(Builder b, int sub, Vector3 center, Vector3 size, float bevel)
+        {
+            bevel = Mathf.Min(bevel, Mathf.Min(size.x, Mathf.Min(size.y, size.z)) * 0.45f);
+            float hx = size.x / 2, hz = size.z / 2, h = size.y;
+            // perfil (z, y) biselado, extruido a lo largo de X (menos el bisel de las puntas)
+            var prof = new List<Vector2>
+            {
+                new Vector2(-hz + bevel, 0), new Vector2(hz - bevel, 0), new Vector2(hz, bevel), new Vector2(hz, h - bevel),
+                new Vector2(hz - bevel, h), new Vector2(-hz + bevel, h), new Vector2(-hz, h - bevel), new Vector2(-hz, bevel)
+            };
+            var tmp = new Builder(1);
+            AddExtrusion(tmp, 0, prof, size.x - bevel * 2);
+            // tapas de las puntas, un poco más chicas (bisel en X)
+            var small = new List<Vector2>();
+            foreach (var p in prof)
+            {
+                var q = new Vector2(Mathf.Clamp(p.x, -hz + bevel, hz - bevel), Mathf.Clamp(p.y, bevel, h - bevel));
+                if (small.Count == 0 || (small[small.Count - 1] - q).sqrMagnitude > 1e-8f) small.Add(q);
+            }
+            if (small.Count > 1 && (small[0] - small[small.Count - 1]).sqrMagnitude < 1e-8f) small.RemoveAt(small.Count - 1);
+            AddExtrusion(tmp, 0, small, size.x);
+            var m = tmp.Build();
+            b.Add(m, Matrix4x4.Translate(center), sub);
         }
 
         /// <summary>Triangula un polígono simple (método de "orejas"). Devuelve índices.</summary>

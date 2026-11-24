@@ -22,14 +22,19 @@ namespace LaTranquera
                 case Tree.Paraiso: bark = new Color(0.33f, 0.24f, 0.17f); leaf = variant % 2 == 0 ? new Color(0.3f, 0.52f, 0.2f) : new Color(0.36f, 0.56f, 0.22f); break;
                 default: bark = new Color(0.35f, 0.27f, 0.2f); leaf = new Color(0.3f, 0.46f, 0.22f); break;
             }
-            return new[] { LaTranquera.Mats.Get(bark, 0.05f), LaTranquera.Mats.Get(leaf, 0.2f) };
+            var leafMat = LaTranquera.Mats.Custom("Hojas_" + ColorUtility.ToHtmlStringRGB(leaf), "LaTranquera/Hojas", leaf, m =>
+            {
+                m.SetFloat("_Wind", t == Tree.Arbusto ? 0.05f : 0.14f);
+                m.SetFloat("_Variation", 0.2f);
+            });
+            return new[] { TexKit.Mat("madera", bark * 1.6f), leafMat };
         }
 
         /// <summary>Pone un árbol. variant elige una de 3 formas (se comparten entre árboles iguales).</summary>
         public static GameObject Place(Tree t, Transform parent, Vector3 pos, int variant, float yaw, float scale = 1f)
         {
             variant = Mathf.Abs(variant) % 3;
-            var mesh = MeshKit.Persist("arbol_" + t + "_" + variant, () => Build(t, variant));
+            var mesh = MeshKit.Persist("arbol2_" + t + "_" + variant, () => Build(t, variant));
             var go = MeshKit.Object(parent, t.ToString(), mesh, Mats(t, variant), pos, new Vector3(0, yaw, 0));
             go.transform.localScale = Vector3.one * scale;
             // collider solo en el tronco
@@ -38,6 +43,23 @@ namespace LaTranquera
             col.height = t == Tree.Arbusto ? 1.2f : 4f;
             col.center = Vector3.up * col.height / 2;
             return go;
+        }
+
+        /// <summary>Tronco torneado con raíces ensanchadas abajo.</summary>
+        static void Trunk(MeshKit.Builder b, Matrix4x4 m, float r, float h)
+        {
+            MeshKit.AddLathe(b, 0, m, MeshKit.Prof(r * 1.7f, -0.05f, r * 1.2f, 0.25f, r, 0.7f, r * 0.85f, h * 0.5f, r * 0.45f, h, 0, h + 0.05f), 9);
+        }
+
+        /// <summary>Racimo de hojas: varias "nubes" juntas, con la de adentro más oscura (da profundidad).</summary>
+        static void Cluster(MeshKit.Builder b, System.Random r, Vector3 c, Vector3 size, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                var off = new Vector3(((float)r.NextDouble() - 0.5f) * size.x * 0.6f, ((float)r.NextDouble() - 0.4f) * size.y * 0.5f, ((float)r.NextDouble() - 0.5f) * size.z * 0.6f);
+                float k = 0.55f + (float)r.NextDouble() * 0.35f;
+                MeshKit.AddBlob(b, 1, c + off, Vector3.Scale(size, new Vector3(k, k * 0.85f, k)), r.Next(), 0.28f);
+            }
         }
 
         static Matrix4x4 M(Vector3 pos, Vector3 euler) => Matrix4x4.TRS(pos, Quaternion.Euler(euler), Vector3.one);
@@ -51,54 +73,55 @@ namespace LaTranquera
             {
                 case Tree.Eucalipto:
                 {
-                    float h = 13f + variant * 1.5f;
+                    float h = 14f + variant * 1.5f;
                     float lean = (R() - 0.5f) * 6f;
-                    MeshKit.AddCylinder(b, 0, M(Vector3.zero, new Vector3(0, 0, lean)), 0.32f, 0.12f, h * 0.85f, 7);
-                    var top = Quaternion.Euler(0, 0, lean) * Vector3.up * h * 0.85f;
-                    for (int i = 0; i < 4; i++)
+                    var lm = M(Vector3.zero, new Vector3(0, 0, lean));
+                    Trunk(b, lm, 0.36f, h * 0.85f);
+                    var dir = Quaternion.Euler(0, 0, lean) * Vector3.up;
+                    for (int i = 0; i < 6; i++)
                     {
-                        float y = h * (0.45f + i * 0.1f);
-                        var basePt = Quaternion.Euler(0, 0, lean) * Vector3.up * y;
-                        var ang = new Vector3(35 + R() * 25, i * 95 + R() * 40, 0);
-                        MeshKit.AddCylinder(b, 0, M(basePt, ang), 0.1f, 0.05f, 2.6f, 5);
-                        var tip = basePt + Quaternion.Euler(ang) * Vector3.up * 2.6f;
-                        MeshKit.AddBlob(b, 1, tip + Vector3.up * 0.4f, new Vector3(2.8f + R(), 2.2f + R(), 2.8f + R()), r.Next());
+                        float y = h * (0.42f + i * 0.08f);
+                        var basePt = dir * y;
+                        var ang = new Vector3(40 + R() * 25, i * 65 + R() * 40, 0);
+                        float len = 2.2f + R() * 1.4f;
+                        MeshKit.AddCylinder(b, 0, M(basePt, ang), 0.11f, 0.04f, len, 5);
+                        var tip = basePt + Quaternion.Euler(ang) * Vector3.up * len;
+                        Cluster(b, r, tip + Vector3.down * 0.3f, new Vector3(2.4f, 2.6f, 2.4f), 4); // el eucalipto tiene la copa caída y rala
                     }
-                    for (int i = 0; i < 4; i++)
-                        MeshKit.AddBlob(b, 1, top + new Vector3((R() - 0.5f) * 2.5f, -0.5f + R() * 1.5f, (R() - 0.5f) * 2.5f), new Vector3(3f + R(), 2.6f + R(), 3f + R()), r.Next());
+                    Cluster(b, r, dir * h * 0.95f, new Vector3(3f, 2.8f, 3f), 5);
                     break;
                 }
                 case Tree.Alamo:
                 {
                     float h = 14f + variant;
-                    MeshKit.AddCylinder(b, 0, Matrix4x4.identity, 0.28f, 0.1f, h * 0.8f, 6);
-                    int n = 7;
+                    Trunk(b, Matrix4x4.identity, 0.3f, h * 0.8f);
+                    int n = 10;
                     for (int i = 0; i < n; i++)
                     {
                         float k = i / (float)(n - 1);
-                        float w = Mathf.Lerp(2.6f, 1.0f, k) + R() * 0.4f;
-                        MeshKit.AddBlob(b, 1, new Vector3((R() - 0.5f) * 0.4f, 2.6f + k * (h - 3.5f), (R() - 0.5f) * 0.4f), new Vector3(w, 2.8f, w), r.Next(), 0.18f);
+                        float w = Mathf.Lerp(2.4f, 0.9f, k * k) + R() * 0.3f;
+                        Cluster(b, r, new Vector3((R() - 0.5f) * 0.3f, 2.4f + k * (h - 3f), (R() - 0.5f) * 0.3f), new Vector3(w, 2.2f, w), 2);
                     }
                     break;
                 }
                 case Tree.Paraiso:
                 {
-                    MeshKit.AddCylinder(b, 0, Matrix4x4.identity, 0.3f, 0.22f, 2.6f, 7);
-                    for (int i = 0; i < 4; i++)
+                    Trunk(b, Matrix4x4.identity, 0.32f, 2.8f);
+                    for (int i = 0; i < 5; i++)
                     {
-                        var ang = new Vector3(40 + R() * 15, i * 90 + R() * 30, 0);
+                        var ang = new Vector3(42 + R() * 15, i * 72 + R() * 25, 0);
                         var start = Vector3.up * 2.4f;
-                        MeshKit.AddCylinder(b, 0, M(start, ang), 0.16f, 0.08f, 2.2f, 6);
-                        var tip = start + Quaternion.Euler(ang) * Vector3.up * 2.2f;
-                        MeshKit.AddBlob(b, 1, tip + Vector3.up * 0.6f, new Vector3(3.6f, 2.4f, 3.6f), r.Next());
+                        float len = 2.0f + R() * 0.6f;
+                        MeshKit.AddCylinder(b, 0, M(start, ang), 0.17f, 0.07f, len, 6);
+                        var tip = start + Quaternion.Euler(ang) * Vector3.up * len;
+                        Cluster(b, r, tip + Vector3.up * 0.5f, new Vector3(3.2f, 2.0f, 3.2f), 4);
                     }
-                    MeshKit.AddBlob(b, 1, Vector3.up * 5.2f, new Vector3(4.5f, 2.8f, 4.5f), r.Next());
+                    Cluster(b, r, Vector3.up * 5.0f, new Vector3(4f, 2.4f, 4f), 5);
                     break;
                 }
                 default:
                 {
-                    for (int i = 0; i < 4; i++)
-                        MeshKit.AddBlob(b, 1, new Vector3((R() - 0.5f) * 1.2f, 0.5f + R() * 0.3f, (R() - 0.5f) * 1.2f), new Vector3(1.3f, 1.1f, 1.3f), r.Next());
+                    Cluster(b, r, new Vector3(0, 0.55f, 0), new Vector3(1.7f, 1.2f, 1.7f), 6);
                     MeshKit.AddCylinder(b, 0, Matrix4x4.identity, 0.08f, 0.05f, 0.5f, 5);
                     break;
                 }

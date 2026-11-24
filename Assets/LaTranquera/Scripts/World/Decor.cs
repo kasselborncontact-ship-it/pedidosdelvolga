@@ -12,15 +12,27 @@ namespace LaTranquera
         public string action = "";       // ej.: "[E] Cebarse unos mates"
         public string message = "";      // lo que aparece al usarlo
         public Light toggleLight;        // si tiene, E prende/apaga esta luz
+        public GameObject toggleObject;  // si tiene, E lo muestra/esconde (por ejemplo, el fuego)
+        public string actionOff = "";    // texto de la acción cuando el objeto está prendido
+        public string messageOff = "";
         public string sound = "ok";
 
         public string GetName(UseContext c) => Loc.T(displayName);
-        public string GetPrompt(UseContext c) => string.IsNullOrEmpty(action) ? null : action;
+        bool On => toggleObject != null && toggleObject.activeSelf;
+
+        public string GetPrompt(UseContext c)
+        {
+            if (On && !string.IsNullOrEmpty(actionOff)) return actionOff;
+            return string.IsNullOrEmpty(action) ? null : action;
+        }
 
         public void Interact(UseContext c)
         {
+            bool wasOn = On;
             if (toggleLight != null) toggleLight.enabled = !toggleLight.enabled;
-            if (!string.IsNullOrEmpty(message)) HUD.Toast(message);
+            if (toggleObject != null) toggleObject.SetActive(!toggleObject.activeSelf);
+            string msg = wasOn && !string.IsNullOrEmpty(messageOff) ? messageOff : message;
+            if (!string.IsNullOrEmpty(msg)) HUD.Toast(msg);
             if (!string.IsNullOrEmpty(action)) Sfx.Play(sound, 0.4f);
         }
     }

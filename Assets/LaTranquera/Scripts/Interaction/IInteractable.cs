@@ -38,6 +38,7 @@ namespace LaTranquera
         /// <summary>Busca un componente del tipo T en lo que estoy mirando (o en sus padres).</summary>
         public T Get<T>() where T : class
         {
+            if (target is T direct) return direct;
             if (!hasHit || hit.collider == null) return null;
             return hit.collider.GetComponentInParent<T>();
         }

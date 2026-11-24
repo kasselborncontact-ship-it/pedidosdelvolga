@@ -174,11 +174,14 @@ namespace LaTranquera.EditorTools
         static void Road()
         {
             var road = Shapes.Empty(estatico, "Ruta", Vector3.zero).transform;
-            W.TBoxB(road, "Asfalto", Vector3.zero, new Vector3(800, 0.04f, 7.2f), TexKit.Mat("asfalto", Color.white), 0, false);
-            Shapes.Box(road, "LineaBordeN", new Vector3(0, 0.04f, 3.4f), new Vector3(800, 0.005f, 0.12f), Mats.Blanco, false);
-            Shapes.Box(road, "LineaBordeS", new Vector3(0, 0.04f, -3.4f), new Vector3(800, 0.005f, 0.12f), Mats.Blanco, false);
-            for (float x = -396; x < 400; x += 9)
-                Shapes.Box(road, "LineaCentral", new Vector3(x, 0.04f, 0), new Vector3(3.5f, 0.005f, 0.12f), new Color(0.95f, 0.85f, 0.3f), false);
+            // asfalto con las líneas pintadas, huellas, grietas y parches (una sola textura a lo ancho)
+            W.TBoxB(road, "Asfalto", Vector3.zero, new Vector3(801, 0.04f, 7.2f), TexKit.MatST("ruta", Color.white, new Vector2(9f, 7.2f), 0.25f), 0, false);
+            ElectricLine(road);
+            Mojon(road, new Vector3(-24, 0, 6.0f), "KM\n214");
+            Mojon(road, new Vector3(76, 0, 6.0f), "KM\n215");
+            RoadSign(road, new Vector3(-40, 0, 6.2f), 180, "60", true);
+            RoadSign(road, new Vector3(42, 0, -6.2f), 0, "60", true);
+            RoadSign(road, new Vector3(-28, 0, -6.2f), 0, "ALMACÉN\nA 200 m", false);
             W.TBoxB(road, "BanquinaN", new Vector3(0, 0, 4.6f), new Vector3(800, 0.03f, 2f), TexKit.Mat("ripio", Color.white), 0, false);
             W.TBoxB(road, "BanquinaS", new Vector3(0, 0, -4.6f), new Vector3(800, 0.03f, 2f), TexKit.Mat("ripio", Color.white), 0, false);
             noGrass.Add(R(-400, -5.7f, 400, 5.7f));
@@ -190,6 +193,67 @@ namespace LaTranquera.EditorTools
             }
             W.Sign(road, new Vector3(-16, 0, 5.2f), 180, "ALMACÉN LA TRANQUERA\nVerduras frescas · 50 m", new Vector2(2.4f, 0.9f));
             W.Sign(road, new Vector3(24, 0, -5.2f), 0, "RUTA PROVINCIAL 5", new Vector2(1.8f, 0.5f));
+        }
+
+        /// <summary>Tendido eléctrico rural: postes de madera con cruceta, aisladores y 3 cables que cuelgan.</summary>
+        static void ElectricLine(Transform p)
+        {
+            var t = Shapes.Empty(p, "Tendido electrico", Vector3.zero).transform;
+            var wood = TexKit.Mat("madera", new Color(0.7f, 0.62f, 0.52f));
+            var wire = new Color(0.08f, 0.08f, 0.08f);
+            float z = -7f, h = 8.5f;
+            float prev = float.NaN;
+            for (float x = -270; x <= 270; x += 45)
+            {
+                var b = new MeshKit.Builder(1);
+                MeshKit.AddCylinder(b, 0, Matrix4x4.identity, 0.16f, 0.11f, h, 8);
+                MeshKit.AddBox(b, 0, new Vector3(0, h - 0.4f, 0), new Vector3(0.12f, 0.12f, 1.8f));
+                MeshKit.Object(t, "Poste", MeshKit.Persist("posteLuz", () => b.Build()), new[] { wood }, new Vector3(x, 0, z));
+                foreach (var dz in new[] { -0.75f, 0f, 0.75f })
+                    Shapes.Cyl(t, "Aislador", new Vector3(x, h - 0.34f, z + dz), 0.07f, 0.12f, new Color(0.75f, 0.85f, 0.75f), false);
+                if (!float.IsNaN(prev))
+                    foreach (var dz in new[] { -0.75f, 0f, 0.75f })
+                    {
+                        Vector3 last = new Vector3(prev, h - 0.2f, z + dz);
+                        for (int k = 1; k <= 6; k++)
+                        {
+                            float u = k / 6f;
+                            var pt = new Vector3(Mathf.Lerp(prev, x, u), h - 0.2f - Mathf.Sin(u * Mathf.PI) * 0.9f, z + dz);
+                            Shapes.Beam(t, "Cable", last, pt, 0.02f, wire);
+                            last = pt;
+                        }
+                    }
+                prev = x;
+            }
+        }
+
+        static void Mojon(Transform p, Vector3 pos, string text)
+        {
+            var t = Shapes.Empty(p, "Mojon", pos, new Vector3(0, 180, 0)).transform;
+            W.TBoxB(t, "Cuerpo", Vector3.zero, new Vector3(0.35f, 0.9f, 0.18f), W.Cemento);
+            Shapes.Box(t, "Franja", new Vector3(0, 0.62f, 0), new Vector3(0.36f, 0.25f, 0.19f), Color.white, false);
+            WorldLabel.Create(t, text, new Vector3(0, 0.74f, 0.1f), new Vector2(0.33f, 0.24f), 80, Color.black, Vector3.forward);
+            WorldLabel.Create(t, text, new Vector3(0, 0.74f, -0.1f), new Vector2(0.33f, 0.24f), 80, Color.black, Vector3.back);
+        }
+
+        /// <summary>Cartel vial en caño: redondo de velocidad máxima o rectangular informativo.</summary>
+        static void RoadSign(Transform p, Vector3 pos, float yaw, string text, bool speed)
+        {
+            var t = Shapes.Empty(p, "Señal", pos, new Vector3(0, yaw, 0)).transform;
+            Shapes.Cyl(t, "Caño", Vector3.zero, 0.07f, 2.4f, new Color(0.6f, 0.6f, 0.62f), true);
+            if (speed)
+            {
+                var red = Shapes.Cyl(t, "Aro", new Vector3(0, 2.4f, 0), 0.75f, 0.03f, new Color(0.8f, 0.1f, 0.1f), false);
+                red.transform.localPosition = new Vector3(0, 2.4f, 0.05f); red.transform.localEulerAngles = new Vector3(90, 0, 0);
+                var white = Shapes.Cyl(t, "Fondo", new Vector3(0, 2.4f, 0), 0.6f, 0.03f, Color.white, false);
+                white.transform.localPosition = new Vector3(0, 2.4f, 0.07f); white.transform.localEulerAngles = new Vector3(90, 0, 0);
+                WorldLabel.Create(t, text, new Vector3(0, 2.4f, 0.09f), new Vector2(0.55f, 0.4f), 300, Color.black, Vector3.forward);
+            }
+            else
+            {
+                Shapes.BoxC(t, "Chapa", new Vector3(0, 2.4f, 0.05f), new Vector3(1.4f, 0.8f, 0.03f), new Color(0.1f, 0.35f, 0.65f), false);
+                WorldLabel.Create(t, text, new Vector3(0, 2.4f, 0.07f), new Vector2(1.3f, 0.7f), 200, Color.white, Vector3.forward);
+            }
         }
 
         static void Paths()
@@ -237,7 +301,7 @@ namespace LaTranquera.EditorTools
             W.Wall(h, "Costado oeste", P(-10, 28), P(-10, 16), WH, T, rev, true, new W.Opening(1.0f, 1.9f, 1.4f, 2.2f, true), new W.Opening(8.2f, 9.6f, 1.2f, 2.4f, true));
             W.Wall(h, "Costado este (portón)", P(11, 16), P(11, 28), WH, T, rev, true, new W.Opening(3.5f, 7.5f, 0, 3.0f));
             // Paredes interiores
-            W.Wall(h, "Almacén|Depósito", P(4, 16), P(4, 28), WH, 0.2f, rev, true, new W.Opening(8.6f, 9.6f, 0, 2.3f));
+            W.Wall(h, "Almacén|Depósito", P(4, 16), P(4, 28), WH, 0.2f, rev, true, new W.Opening(3.7f, 4.6f, 0, 2.3f), new W.Opening(8.6f, 9.6f, 0, 2.3f));
             W.Wall(h, "Almacén|Dormitorio", P(-4, 16), P(-4, 28), WH, 0.2f, rev, true, new W.Opening(8.6f, 9.6f, 0, 2.3f));
             W.Wall(h, "Almacén|Comedor", P(-4, 22), P(4, 22), WH, 0.2f, rev, true, new W.Opening(0.2f, 1.1f, 0, 2.3f));
             W.Wall(h, "Dormitorio|Cocina", P(-10, 22), P(-4, 22), WH, 0.2f, rev, true, new W.Opening(2.6f, 3.5f, 0, 2.3f));
@@ -245,7 +309,9 @@ namespace LaTranquera.EditorTools
             W.Wall(h, "Baño puerta", P(-7.6f, 25.4f), P(-7.6f, 28), WH, 0.15f, rev, true, new W.Opening(0.9f, 1.7f, 0, 2.2f));
 
             // Zócalo de ladrillo visto en el frente y una cornisa
-            W.TBoxB(h, "Zócalo", new Vector3(0.5f, y0, 15.85f), new Vector3(21.2f, 0.75f, 0.08f), W.Ladrillo, 0, false);
+            // (cortado en la puerta del almacén para que no la tape)
+            W.TBoxB(h, "Zócalo", new Vector3((-10.1f - 0.72f) / 2, y0, 15.85f), new Vector3(10.1f - 0.72f, 0.75f, 0.08f), W.Ladrillo, 0, false);
+            W.TBoxB(h, "Zócalo", new Vector3((11.1f + 0.72f) / 2, y0, 15.85f), new Vector3(11.1f - 0.72f, 0.75f, 0.08f), W.Ladrillo, 0, false);
             W.TBoxB(h, "Cornisa", new Vector3(0.5f, y0 + WH - 0.25f, 15.85f), new Vector3(21.4f, 0.25f, 0.12f), rev, 0, false);
 
             // Cielorraso de machimbre
@@ -382,7 +448,9 @@ namespace LaTranquera.EditorTools
             WorldLabel.Create(desk, "PROVEEDOR\nPRECIOS · MEJORAS", new Vector3(0, 1.13f, 0.12f), new Vector2(0.46f, 0.32f), 40, new Color(0.7f, 0.9f, 1f), Vector3.back, new Color(0.08f, 0.2f, 0.35f));
             desk.gameObject.AddComponent<ComputerTerminal>();
 
-            var lh = Shapes.Empty(inter, "LugarEtiquetadora", new Vector3(3.55f, FL + 0.79f, 20.45f), new Vector3(0, -90, 0));
+            // puerta directa del almacén al depósito (detrás del mostrador)
+            W.MakeDoor(inter, "Puerta almacén-depósito", new Vector3(4f, FL, 19.7f), -90, 0.9f, 2.3f, true, 95f);
+            var lh = Shapes.Empty(inter, "LugarEtiquetadora", new Vector3(3.6f, FL + 0.79f, 16.55f), new Vector3(0, -90, 0));
             Shapes.Box(lh.transform, "Repisa", new Vector3(0, -0.02f, 0), new Vector3(0.3f, 0.02f, 0.25f), Mats.Madera, false);
             s.labelerHook = Hook(lh, "labeler", "Lugar de la etiquetadora", new Vector3(0.35f, 0.3f, 0.35f));
 
@@ -488,9 +556,10 @@ namespace LaTranquera.EditorTools
                 Shapes.Empty(inter, "Semillas3", new Vector3(6.9f, FL + 0.9f, 16.6f)).transform,
             };
             // estanterías metálicas del depósito con bolsas (decorativas)
+            Vector3[] rackPos = { new Vector3(4.45f, FL, 22.6f), new Vector3(10.55f, FL, 26.4f) };
             for (int i = 0; i < 2; i++)
             {
-                var r = Shapes.Empty(estatico, "Rack", new Vector3(4.45f, FL, 18f + i * 2.4f), new Vector3(0, 90, 0)).transform;
+                var r = Shapes.Empty(estatico, "Rack", rackPos[i], new Vector3(0, 90, 0)).transform;
                 Color metal = new Color(0.4f, 0.45f, 0.55f);
                 foreach (var x in new[] { -1f, 1f }) foreach (var z in new[] { -0.25f, 0.25f })
                     Shapes.Box(r, "Parante", new Vector3(x, 0, z), new Vector3(0.04f, 2.2f, 0.04f), metal, false);
@@ -530,109 +599,58 @@ namespace LaTranquera.EditorTools
 
             // --- Comedor ---
             WorldParts.RoomLight(estatico, new Vector3(0, y + WH - 0.7f, 25f), 8f, 1.5f);
-            Table(r, new Vector3(0.3f, y, 25.2f), 2.0f, 1.0f, 6);
-            W.TBoxB(r, "Aparador", new Vector3(3.55f, y, 26.6f), new Vector3(0.55f, 1.0f, 1.8f), W.Madera);
-            W.TBoxB(r, "Vitrina", new Vector3(3.6f, y + 1.0f, 26.6f), new Vector3(0.4f, 0.9f, 1.6f), TexKit.Mat("madera", new Color(0.8f, 0.7f, 0.6f)));
+            FurnitureKit.DiningSet(r, new Vector3(0.3f, y, 25.2f), 2.0f, 1.0f, 6);
+            FurnitureKit.Sideboard(r, new Vector3(3.55f, y, 26.6f), -90);
             W.TBox(r, "Cuadro", new Vector3(-3.88f, y + 1.8f, 26.5f), new Vector3(0.03f, 0.6f, 0.8f), TexKit.Mat("madera", new Color(0.5f, 0.6f, 0.75f)), 0, false);
             var clock = Shapes.Cyl(r, "Reloj", new Vector3(0, y + 2.4f, 22.13f), 0.4f, 0.04f, Color.white, false);
             clock.transform.localEulerAngles = new Vector3(90, 0, 0);
 
             // --- Cocina ---
             WorldParts.RoomLight(estatico, new Vector3(-6f, y + WH - 0.7f, 24.5f), 8f, 1.5f);
-            var cocina = Shapes.Empty(inter, "CocinaALeña", new Vector3(-9.3f, y, 23.2f)).transform;
-            Shapes.Box(cocina, "Cuerpo", Vector3.zero, new Vector3(0.75f, 0.85f, 1.3f), new Color(0.1f, 0.1f, 0.1f), true);
-            Shapes.Box(cocina, "Hornalla", new Vector3(0, 0.85f, 0), new Vector3(0.78f, 0.04f, 1.33f), new Color(0.25f, 0.25f, 0.25f), false);
-            Shapes.Box(cocina, "PuertaHorno", new Vector3(0.38f, 0.25f, -0.25f), new Vector3(0.02f, 0.35f, 0.45f), new Color(0.6f, 0.6f, 0.62f), false);
-            Shapes.Cyl(cocina, "Caño", new Vector3(0, 0.85f, 0.4f), 0.15f, 2.6f, new Color(0.15f, 0.15f, 0.15f), false);
-            Shapes.Cyl(cocina, "Olla", new Vector3(0.05f, 0.89f, -0.2f), 0.3f, 0.22f, new Color(0.7f, 0.7f, 0.72f), false);
-            var cd = cocina.gameObject.AddComponent<Decor>();
-            cd.displayName = "Cocina económica a leña"; cd.action = "[E] Atizar el fuego"; cd.message = "Echaste un par de leños. Se siente el calorcito.";
-            // mesada con bacha y alacena
-            W.TBoxB(r, "Mesada", new Vector3(-5.9f, y, 27.55f), new Vector3(3.2f, 0.9f, 0.6f), W.Madera);
-            Shapes.Box(r, "TapaMesada", new Vector3(-5.9f, y + 0.9f, 27.55f), new Vector3(3.25f, 0.04f, 0.62f), new Color(0.85f, 0.85f, 0.82f), false);
-            Shapes.Box(r, "Bacha", new Vector3(-6.6f, y + 0.9f, 27.55f), new Vector3(0.6f, 0.02f, 0.45f), new Color(0.6f, 0.6f, 0.62f), false);
-            Shapes.Cyl(r, "Canilla", new Vector3(-6.6f, y + 0.92f, 27.8f), 0.03f, 0.3f, new Color(0.8f, 0.8f, 0.8f), false);
-            // heladera vieja tipo Siam
-            var hel = Shapes.Empty(inter, "HeladeraVieja", new Vector3(-4.55f, y, 23.0f)).transform;
-            Shapes.Box(hel, "Cuerpo", Vector3.zero, new Vector3(0.65f, 1.6f, 0.65f), new Color(0.93f, 0.93f, 0.9f), true);
-            Shapes.Sphere(hel, "Tapa", new Vector3(0, 1.6f, 0), new Vector3(0.65f, 0.18f, 0.65f), new Color(0.93f, 0.93f, 0.9f));
-            Shapes.Box(hel, "Manija", new Vector3(-0.33f, 1.1f, 0.2f), new Vector3(0.03f, 0.2f, 0.04f), new Color(0.8f, 0.8f, 0.8f), false);
-            var hd = hel.gameObject.AddComponent<Decor>();
-            hd.displayName = "Heladera de la casa"; hd.action = "[E] Abrir"; hd.message = "Hay un poco de soda, manteca y salame. (La mercadería del almacén va en la heladera del local.)";
-            // mesa con pava y mate
-            Table(r, new Vector3(-6.3f, y, 24.6f), 1.4f, 0.8f, 4);
-            var mate = Shapes.Empty(inter, "PavaYMate", new Vector3(-6.3f, y + 0.78f, 24.6f)).transform;
-            Shapes.Cyl(mate, "Pava", new Vector3(0.15f, 0, 0), 0.18f, 0.16f, new Color(0.75f, 0.75f, 0.78f), false);
-            Shapes.Cyl(mate, "TapaPava", new Vector3(0.15f, 0.16f, 0), 0.1f, 0.04f, new Color(0.2f, 0.2f, 0.2f), false);
-            Shapes.CylC(mate, "Pico", new Vector3(0.27f, 0.1f, 0), 0.03f, 0.12f, new Color(0.75f, 0.75f, 0.78f), new Vector3(0, 0, -50));
-            Shapes.Cyl(mate, "Mate", new Vector3(-0.12f, 0, 0.05f), 0.08f, 0.09f, new Color(0.45f, 0.3f, 0.18f), false);
-            Shapes.CylC(mate, "Bombilla", new Vector3(-0.11f, 0.12f, 0.05f), 0.008f, 0.12f, new Color(0.8f, 0.8f, 0.8f), new Vector3(0, 0, 12));
+            var stove = FurnitureKit.WoodStove(inter, new Vector3(-9.5f, y, 23.2f), 90, out var fire);
+            fire.SetActive(false);
+            var cd = stove.AddComponent<Decor>();
+            cd.displayName = "Cocina económica a leña";
+            cd.toggleObject = fire;
+            cd.action = "[E] Prender el fuego";
+            cd.actionOff = "[E] Apagar el fuego";
+            cd.message = "Prendiste la cocina a leña. Se siente el calorcito.";
+            cd.messageOff = "Apagaste el fuego.";
+            FurnitureKit.KitchenCounter(r, new Vector3(-5.9f, y, 27.55f), 180, 3.2f);
+            var hel = FurnitureKit.SiamFridge(inter, new Vector3(-4.55f, y, 23.0f), -90);
+            var hd = hel.AddComponent<Decor>();
+            hd.displayName = "Heladera Siam"; hd.action = "[E] Abrir"; hd.message = "Hay un poco de soda, manteca y salame. (La mercadería del almacén va en la heladera del local.)";
+            FurnitureKit.DiningSet(r, new Vector3(-6.3f, y, 24.6f), 1.4f, 0.8f, 4);
+            var mate = Shapes.Empty(inter, "PavaYMate", new Vector3(-6.3f, y + 0.765f, 24.6f)).transform;
+            FurnitureKit.Kettle(mate, new Vector3(0.15f, 0, 0), 30);
+            FurnitureKit.Mate(mate, new Vector3(-0.12f, 0, 0.05f));
             var mc = mate.gameObject.AddComponent<BoxCollider>(); mc.center = new Vector3(0, 0.1f, 0); mc.size = new Vector3(0.5f, 0.25f, 0.3f);
             var md = mate.gameObject.AddComponent<Decor>();
             md.displayName = "Pava y mate"; md.action = "[E] Cebarse unos mates"; md.message = "¡Qué rico mate! Arrancás el día con todo.";
-            // radio
-            var radio = Shapes.Empty(inter, "Radio", new Vector3(-4.8f, y + 0.94f, 27.6f)).transform;
-            Shapes.Box(radio, "Caja", Vector3.zero, new Vector3(0.35f, 0.22f, 0.15f), new Color(0.5f, 0.3f, 0.18f), true);
-            Shapes.Box(radio, "Dial", new Vector3(0, 0.06f, -0.076f), new Vector3(0.25f, 0.08f, 0.005f), new Color(0.95f, 0.85f, 0.55f), false);
-            var rd = radio.gameObject.AddComponent<Decor>();
+            var radio = FurnitureKit.Radio(inter, new Vector3(-4.5f, y + 0.9f, 27.6f), 180);
+            var rd = radio.AddComponent<Decor>();
             rd.displayName = "Radio a válvulas"; rd.action = "[E] Prender la radio"; rd.message = "Suena un chamamé... y el pronóstico: \"buen tiempo para la siembra\".";
 
             // --- Baño ---
             WorldParts.RoomLight(estatico, new Vector3(-8.8f, y + WH - 0.7f, 26.7f), 4f, 1f);
-            Shapes.Box(r, "Inodoro", new Vector3(-9.6f, y, 26f), new Vector3(0.4f, 0.42f, 0.55f), Color.white, true);
-            Shapes.Box(r, "Mochila", new Vector3(-9.85f, y + 1.6f, 26f), new Vector3(0.2f, 0.4f, 0.45f), Color.white, false);
-            Shapes.Box(r, "Lavatorio", new Vector3(-8.3f, y + 0.8f, 27.75f), new Vector3(0.55f, 0.15f, 0.4f), Color.white, true);
-            Shapes.Box(r, "PieLavatorio", new Vector3(-8.3f, y, 27.75f), new Vector3(0.18f, 0.8f, 0.18f), Color.white, false);
-            Shapes.Box(r, "Bañera", new Vector3(-9.2f, y, 27.3f), new Vector3(1.4f, 0.55f, 0.7f), new Color(0.95f, 0.95f, 0.92f), true);
-            Shapes.Box(r, "Espejo", new Vector3(-8.3f, y + 1.5f, 27.9f), new Vector3(0.5f, 0.6f, 0.02f), new Color(0.75f, 0.85f, 0.9f), false);
+            FurnitureKit.Toilet(r, new Vector3(-9.55f, y, 26.2f), 90);
+            FurnitureKit.PedestalSink(r, new Vector3(-8.45f, y, 25.8f), 0);
+            Shapes.Box(r, "Espejo", new Vector3(-8.45f, y + 1.3f, 25.49f), new Vector3(0.5f, 0.6f, 0.02f), new Color(0.75f, 0.85f, 0.9f), false);
+            FurnitureKit.Bathtub(r, new Vector3(-9.05f, y, 27.45f), 0);
 
             // --- Dormitorio ---
             WorldParts.RoomLight(estatico, new Vector3(-7f, y + WH - 0.7f, 19f), 8f, 1.4f);
-            var cama = Shapes.Empty(inter, "Cama", new Vector3(-8.95f, y, 18.8f)).transform;
-            Color iron = new Color(0.12f, 0.12f, 0.13f);
-            Shapes.Box(cama, "Base", Vector3.zero, new Vector3(2.0f, 0.4f, 1.45f), new Color(0.3f, 0.3f, 0.32f), true);
-            Shapes.Box(cama, "Colchón", new Vector3(0, 0.4f, 0), new Vector3(1.95f, 0.18f, 1.4f), new Color(0.92f, 0.9f, 0.85f), true);
-            Shapes.Box(cama, "Colcha", new Vector3(0.25f, 0.58f, 0), new Vector3(1.45f, 0.04f, 1.46f), new Color(0.6f, 0.2f, 0.22f), false);
-            Shapes.Box(cama, "Almohadas", new Vector3(-0.75f, 0.58f, 0), new Vector3(0.35f, 0.12f, 1.2f), Color.white, false);
-            for (int i = 0; i < 7; i++) Shapes.Box(cama, "Barrote", new Vector3(-1.0f, 0, -0.6f + i * 0.2f), new Vector3(0.03f, 1.15f, 0.03f), iron, false);
-            Shapes.Box(cama, "Respaldo", new Vector3(-1.0f, 1.1f, 0), new Vector3(0.05f, 0.06f, 1.45f), iron, false);
-            Shapes.Box(cama, "Piecera", new Vector3(1.0f, 0, 0), new Vector3(0.05f, 0.8f, 1.45f), iron, false);
-            var bed = cama.gameObject.AddComponent<SleepBed>();
+            var cama = FurnitureKit.IronBed(inter, new Vector3(-8.85f, y, 18.8f), 0, new Color(0.6f, 0.2f, 0.22f));
+            var bed = cama.AddComponent<SleepBed>();
             bed.wakeUpPoint = Shapes.Empty(interactivo, "Despertar", new Vector3(-7.2f, y + 0.1f, 18.8f), new Vector3(0, 90, 0)).transform;
-            W.TBoxB(r, "Ropero", new Vector3(-4.45f, y, 20.6f), new Vector3(0.6f, 2.1f, 1.6f), W.Madera);
-            Shapes.Box(r, "EspejoRopero", new Vector3(-4.76f, y + 0.6f, 20.6f), new Vector3(0.01f, 1.2f, 0.5f), new Color(0.75f, 0.85f, 0.9f), false);
-            W.TBoxB(r, "MesaDeLuz", new Vector3(-9.6f, y, 17.6f), new Vector3(0.45f, 0.6f, 0.45f), W.Madera);
-            var vel = Shapes.Empty(inter, "Velador", new Vector3(-9.6f, y + 0.6f, 17.6f)).transform;
-            Shapes.Cyl(vel, "Pie", Vector3.zero, 0.08f, 0.25f, new Color(0.7f, 0.6f, 0.3f), false);
-            Shapes.Cone(vel, "Pantalla", new Vector3(0, 0.22f, 0), 0.25f, 0.2f, new Color(0.95f, 0.88f, 0.7f));
-            var vl = WorldParts.PointLight(vel, new Vector3(0, 0.3f, 0), 3.5f, 0.8f, new Color(1f, 0.85f, 0.6f));
-            var vc = vel.gameObject.AddComponent<BoxCollider>(); vc.center = new Vector3(0, 0.2f, 0); vc.size = new Vector3(0.3f, 0.45f, 0.3f);
-            var vd = vel.gameObject.AddComponent<Decor>();
+            FurnitureKit.Wardrobe(r, new Vector3(-4.45f, y, 20.6f), -90);
+            FurnitureKit.Nightstand(r, new Vector3(-9.6f, y, 17.6f), 90);
+            var vl = FurnitureKit.Lamp(inter, new Vector3(-9.6f, y + 0.6f, 17.6f));
+            var vd = vl.transform.parent.gameObject.AddComponent<Decor>();
             vd.displayName = "Velador"; vd.action = "[E] Prender / apagar"; vd.toggleLight = vl; vd.sound = "key";
             W.TBoxB(r, "Baúl", new Vector3(-7.5f, y, 16.6f), new Vector3(0.9f, 0.5f, 0.5f), TexKit.Mat("madera", new Color(0.7f, 0.55f, 0.45f)));
             Shapes.Cyl(r, "Alfombra", new Vector3(-7.2f, y + 0.005f, 19f), 1.8f, 0.01f, new Color(0.55f, 0.35f, 0.3f), false);
             return bed;
-        }
-
-        static void Table(Transform p, Vector3 pos, float w, float d, int chairs)
-        {
-            var t = Shapes.Empty(p, "Mesa", pos).transform;
-            W.TBoxB(t, "Tapa", new Vector3(0, 0.74f, 0), new Vector3(w, 0.05f, d), W.Madera);
-            foreach (var c in new[] { new Vector3(-1, 0, -1), new Vector3(1, 0, -1), new Vector3(-1, 0, 1), new Vector3(1, 0, 1) })
-                W.TBoxB(t, "Pata", new Vector3(c.x * (w / 2 - 0.06f), 0, c.z * (d / 2 - 0.06f)), new Vector3(0.06f, 0.74f, 0.06f), W.Madera, 0, false);
-            for (int i = 0; i < chairs; i++)
-            {
-                float side = i % 2 == 0 ? -1 : 1;
-                float x = chairs <= 2 ? 0 : Mathf.Lerp(-w / 2 + 0.35f, w / 2 - 0.35f, (i / 2) / Mathf.Max(1f, chairs / 2 - 1));
-                var ch = Shapes.Empty(t, "Silla", new Vector3(x, 0, side * (d / 2 + 0.3f))).transform;
-                W.TBoxB(ch, "Asiento", new Vector3(0, 0.44f, 0), new Vector3(0.42f, 0.04f, 0.42f), W.Madera, 0, false);
-                W.TBoxB(ch, "Respaldo", new Vector3(0, 0.48f, side * 0.2f), new Vector3(0.42f, 0.5f, 0.03f), W.Madera, 0, false);
-                foreach (var c in new[] { new Vector3(-1, 0, -1), new Vector3(1, 0, -1), new Vector3(-1, 0, 1), new Vector3(1, 0, 1) })
-                    W.TBoxB(ch, "Pata", new Vector3(c.x * 0.18f, 0, c.z * 0.18f), new Vector3(0.03f, 0.44f, 0.03f), W.Madera, 0, false);
-            }
-            var col = t.gameObject.AddComponent<BoxCollider>();
-            col.center = new Vector3(0, 0.4f, 0);
-            col.size = new Vector3(w, 0.8f, d);
         }
 
         // ------------------------------------------------------------------
