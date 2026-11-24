@@ -145,7 +145,7 @@ namespace LaTranquera.EditorTools
             l.range = range;
             l.intensity = intensity;
             l.color = new Color(1f, 0.9f, 0.75f);
-            l.shadows = LightShadows.Soft;
+            l.shadows = LightShadows.None; // sin sombras: muchas luces con sombra saturan el atlas
             return l;
         }
 

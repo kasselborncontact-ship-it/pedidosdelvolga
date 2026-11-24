@@ -41,7 +41,7 @@ namespace LaTranquera
             // Si te quedás despierto hasta las 2:00, te dormís solo
             if (!sleeping && TimeManager.I != null && TimeManager.I.Hour >= 2f && TimeManager.I.Hour < 5f) Sleep(true);
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_EDITOR || DEBUG
             // Truco de prueba: F8 adelanta 6 horas (las plantas crecen si tienen agua)
             if (GameInput.DebugSkipTime && !sleeping)
             {
